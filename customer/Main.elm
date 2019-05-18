@@ -105,7 +105,7 @@ update msg model =
         ( CreateReportMsg msgOfCreateReport, Model glob (CreateReportPage createReportPage) ) ->
             let
                 ( nextCreateReport, cmdOfCreateReport ) =
-                    CreateReport.update msgOfCreateReport createReportPage
+                    CreateReport.update msgOfCreateReport glob createReportPage
             in
             ( Model glob (CreateReportPage nextCreateReport)
             , Cmd.map CreateReportMsg cmdOfCreateReport

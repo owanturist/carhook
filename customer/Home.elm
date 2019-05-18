@@ -23,7 +23,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( Model Loading
-    , Api.getListOfReports GetListOfReportsDone
+    , Cmd.map GetListOfReportsDone Api.getListOfReports
     )
 
 
@@ -167,7 +167,7 @@ viewReportCard report =
                         div
                             [ Html.Attributes.class "card-body"
                             ]
-                            [ h5 [ Html.Attributes.class "card-title" ] [ text "title" ]
+                            [ h5 [ Html.Attributes.class "card-title" ] [ text number ]
                             , p [ Html.Attributes.class "cart-text mb-0" ] [ text comment ]
                             ]
                 , div

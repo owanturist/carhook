@@ -1,5 +1,6 @@
-module Router exposing (Route(..), parse, toString)
+module Router exposing (Route(..), parse, push, replace, toString)
 
+import Browser.Navigation
 import ID exposing (ID)
 import Url exposing (Url)
 import Url.Builder exposing (absolute)
@@ -41,3 +42,13 @@ parser =
 parse : Url -> Route
 parse =
     Maybe.withDefault ToNotFound << Url.Parser.parse parser
+
+
+push : Browser.Navigation.Key -> Route -> Cmd msg
+push key route =
+    Browser.Navigation.pushUrl key (toString route)
+
+
+replace : Browser.Navigation.Key -> Route -> Cmd msg
+replace key route =
+    Browser.Navigation.replaceUrl key (toString route)

@@ -1,10 +1,16 @@
 module CreateReport exposing (Model, Msg, destroy, init, subscriptions, update, view)
 
+import Api
 import File exposing (File)
-import Html exposing (Html, button, div, form, i, img, input, label, text, textarea)
+import Glob exposing (Glob)
+import Html exposing (Html, br, button, code, div, form, i, img, input, label, text, textarea)
 import Html.Attributes
 import Html.Events
+import Http
+import ID exposing (ID)
 import Json.Decode as Decode
+import RemoteData exposing (RemoteData(..))
+import Router
 import Task
 import YaMap
 
@@ -14,7 +20,8 @@ import YaMap
 
 
 type alias Model =
-    { address : String
+    { creation : RemoteData Http.Error ()
+    , address : String
     , number : String
     , comment : String
     , photos : List ( File, String )
@@ -23,7 +30,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model "" "" "" []
+    ( Model NotAsked "" "" "" []
     , YaMap.init "ya-map"
     )
 
@@ -52,10 +59,12 @@ type Msg
     | UploadFiles (List File)
     | PreviewFiles (List ( File, String ))
     | DeleteFile Int
+    | SubmitCreation
+    | SubmitCreationDone (Result Http.Error (ID { report : () }))
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> Glob -> Model -> ( Model, Cmd Msg )
+update msg glob model =
     case msg of
         ChangeAddress nextAddress ->
             ( { model | address = nextAddress }
@@ -86,8 +95,39 @@ update msg model =
             )
 
         DeleteFile index ->
-            ( { model | photos = List.take index model.photos ++ List.drop (index + 1) model.photos }
+            ( if RemoteData.isLoading model.creation then
+                model
+
+              else
+                { model | photos = List.take index model.photos ++ List.drop (index + 1) model.photos }
             , Cmd.none
+            )
+
+        SubmitCreation ->
+            ( { model | creation = Loading }
+            , Api.createRequest
+                { address = String.trim model.address
+                , number = String.trim model.number
+                , comment =
+                    case String.trim model.comment of
+                        "" ->
+                            Nothing
+
+                        comment ->
+                            Just comment
+                , photos = List.map Tuple.first model.photos
+                }
+                |> Cmd.map SubmitCreationDone
+            )
+
+        SubmitCreationDone (Err err) ->
+            ( { model | creation = Failure err }
+            , Cmd.none
+            )
+
+        SubmitCreationDone (Ok reportId) ->
+            ( model
+            , Router.push glob.key (Router.ToViewReport reportId)
             )
 
 
@@ -118,8 +158,8 @@ viewPhoto index ( file, base64 ) =
         ]
 
 
-viewAddPhoto : Html Msg
-viewAddPhoto =
+viewAddPhoto : Bool -> Html Msg
+viewAddPhoto busy =
     div
         [ Html.Attributes.class "col-sm-3 col-4"
         ]
@@ -133,6 +173,7 @@ viewAddPhoto =
                 , Html.Attributes.accept "image/*"
                 , Html.Attributes.attribute "capture" "camera"
                 , Html.Attributes.multiple True
+                , Html.Attributes.disabled busy
                 , Html.Events.on "change"
                     (Decode.list File.decoder
                         |> Decode.at [ "target", "files" ]
@@ -146,6 +187,10 @@ viewAddPhoto =
 
 view : Model -> Html Msg
 view model =
+    let
+        busy =
+            RemoteData.isLoading model.creation
+    in
     div
         [ Html.Attributes.class "create-report"
         ]
@@ -159,6 +204,7 @@ view model =
         , form
             [ Html.Attributes.class "container-fluid my-3"
             , Html.Attributes.novalidate True
+            , Html.Events.onSubmit SubmitCreation
             ]
             [ div
                 [ Html.Attributes.class "form-group"
@@ -170,7 +216,8 @@ view model =
                     , Html.Attributes.value model.address
                     , Html.Attributes.placeholder "Выберите на карте"
                     , Html.Attributes.required True
-                    , Html.Events.onInput ChangeNumber
+                    , Html.Attributes.disabled busy
+                    , Html.Events.onInput ChangeAddress
                     ]
                     []
                 ]
@@ -182,7 +229,7 @@ view model =
                     div
                         [ Html.Attributes.class "form-group row mb-0"
                         ]
-                        (viewAddPhoto :: List.indexedMap viewPhoto model.photos)
+                        (viewAddPhoto busy :: List.indexedMap viewPhoto model.photos)
 
                   else
                     div
@@ -200,6 +247,7 @@ view model =
                     , Html.Attributes.value model.number
                     , Html.Attributes.placeholder "е777кх 154"
                     , Html.Attributes.required True
+                    , Html.Attributes.disabled busy
                     , Html.Events.onInput ChangeNumber
                     ]
                     []
@@ -213,13 +261,47 @@ view model =
                     , Html.Attributes.value model.comment
                     , Html.Attributes.rows 4
                     , Html.Attributes.placeholder "Любые детали и уточенения"
+                    , Html.Attributes.disabled busy
                     , Html.Events.onInput ChangeComment
                     ]
                     []
                 ]
+            , case model.creation of
+                Failure (Http.BadUrl _) ->
+                    div
+                        [ Html.Attributes.class "alert alert-danger" ]
+                        [ text "Разработчики наговнокодили" ]
+
+                Failure Http.Timeout ->
+                    div
+                        [ Html.Attributes.class "alert alert-danger" ]
+                        [ text "Медленное интернет соединение" ]
+
+                Failure Http.NetworkError ->
+                    div
+                        [ Html.Attributes.class "alert alert-danger" ]
+                        [ text "Проверьте подключение к интернету" ]
+
+                Failure (Http.BadStatus status) ->
+                    div
+                        [ Html.Attributes.class "alert alert-danger" ]
+                        [ text ("Запрос упал (STATUS: " ++ String.fromInt status ++ ")") ]
+
+                Failure (Http.BadBody error) ->
+                    div
+                        [ Html.Attributes.class "alert alert-danger" ]
+                        [ text "Плохой ответ от сервера:"
+                        , br [] []
+                        , code [] [ text error ]
+                        ]
+
+                _ ->
+                    text ""
             , button
                 [ Html.Attributes.class "btn btn-block btn-success"
                 , Html.Attributes.disabled (not (isValid model))
+                , Html.Attributes.type_ "submit"
+                , Html.Attributes.disabled (busy || not (isValid model))
                 ]
                 [ i [ Html.Attributes.class "fa fa-paper-plane mr-2" ] []
                 , text "Отправить"

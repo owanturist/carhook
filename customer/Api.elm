@@ -1,10 +1,17 @@
-module Api exposing (Reason(..), Report, Status(..), getListOfReports)
+module Api exposing (Reason(..), Report, Status(..), createRequest, getListOfReports)
 
+import File exposing (File)
 import Http
 import ID exposing (ID)
 import Json.Decode as Decode exposing (Decoder)
 import Task exposing (Task)
 import Time
+import Url.Builder exposing (crossOrigin)
+
+
+endpoint : String
+endpoint =
+    "http://carhook.ru/api"
 
 
 posixDecoder : Decoder Time.Posix
@@ -94,50 +101,49 @@ reportDecoder =
         (Decode.field "photos" (Decode.list Decode.string))
 
 
-getListOfReports : (Result Http.Error (List Report) -> msg) -> Cmd msg
-getListOfReports tagger =
-    [ Report
-        (ID.fromInt 0)
-        (Time.millisToPosix 100)
-        Ready
-        Nothing
-        Nothing
-        [ "http://lorempixel.com/400/300/transport/1"
-        ]
-    , Report
-        (ID.fromInt 1)
-        (Time.millisToPosix 200)
-        (Accepted (Time.millisToPosix 500))
-        Nothing
-        (Just (String.repeat 10 "long comment "))
-        [ "http://lorempixel.com/400/300/transport/2"
-        ]
-    , Report
-        (ID.fromInt 2)
-        (Time.millisToPosix 300)
-        (Declined (Time.millisToPosix 400) PhotosUnclear)
-        (Just "c800pa 54")
-        Nothing
-        [ "http://lorempixel.com/400/300/transport/3"
-        ]
-    , Report
-        (ID.fromInt 2)
-        (Time.millisToPosix 300)
-        (InProgress (Time.millisToPosix 800))
-        (Just "x123pp")
-        (Just (String.repeat 5 "comment "))
-        [ "http://lorempixel.com/400/300/transport/4"
-        ]
-    , Report
-        (ID.fromInt 2)
-        (Time.millisToPosix 300)
-        (Done (Time.millisToPosix 1000))
-        Nothing
-        Nothing
-        [ "http://lorempixel.com/400/300/transport/5"
-        ]
-    ]
-        |> Ok
-        |> tagger
-        |> Task.succeed
-        |> Task.perform identity
+getListOfReports : Cmd (Result Http.Error (List Report))
+getListOfReports =
+    Http.request
+        { method = "GET"
+        , headers = []
+        , url = crossOrigin endpoint [ "get_orders" ] []
+        , body = Http.emptyBody
+        , expect = Http.expectJson identity (Decode.list reportDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+createRequest :
+    { address : String
+    , number : String
+    , comment : Maybe String
+    , photos : List File
+    }
+    -> Cmd (Result Http.Error (ID { report : () }))
+createRequest payload =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = crossOrigin endpoint [ "create_order" ] []
+        , body =
+            [ case payload.comment of
+                Nothing ->
+                    []
+
+                Just comment ->
+                    [ Http.stringPart "comment" comment
+                    ]
+            , [ Http.stringPart "address" payload.address
+              , Http.stringPart "car_code" payload.number
+              , Http.stringPart "lat" "0"
+              , Http.stringPart "lon" "0"
+              ]
+            , List.map (Http.filePart "photos[]") payload.photos
+            ]
+                |> List.concatMap identity
+                |> Http.multipartBody
+        , expect = Http.expectJson identity (Decode.field "id" ID.decoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
