@@ -40,8 +40,8 @@ type Status
     | Done Time.Posix
 
 
-decoder : Decoder Status
-decoder =
+decoder : String -> Decoder Status
+decoder field =
     Decode.andThen
         (\stat ->
             case stat of
@@ -50,24 +50,22 @@ decoder =
 
                 1 ->
                     Decode.map Accepted
-                        (Decode.field "date" posixDecoder)
+                        (Decode.field "update_time" posixDecoder)
 
                 2 ->
                     Decode.map InProgress
-                        (Decode.field "date" posixDecoder)
+                        (Decode.field "update_time" posixDecoder)
 
                 3 ->
                     Decode.map Done
-                        (Decode.field "date" posixDecoder)
+                        (Decode.field "update_time" posixDecoder)
 
                 4 ->
                     Decode.map2 Declined
-                        (Decode.field "date" posixDecoder)
-                        (Decode.field "reason" reasonDecoder)
+                        (Decode.field "update_time" posixDecoder)
+                        (Decode.succeed PhotosUnclear)
 
                 _ ->
                     Decode.fail ("Status " ++ String.fromInt stat ++ " is invalid")
         )
-        Decode.int
-
-
+        (Decode.field field Decode.int)
