@@ -117,7 +117,7 @@ const getPlugins = env => [
 );
 
 module.exports = env => ({
-    entry: path.resolve('./customer.js'),
+    entry: path.resolve('./customer/index.js'),
 
     output: {
         path: path.resolve('./build'),
