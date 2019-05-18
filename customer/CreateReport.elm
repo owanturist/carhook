@@ -1,4 +1,4 @@
-module CreateReport exposing (Model, Msg, destroy, init, update, view)
+module CreateReport exposing (Model, Msg, destroy, init, subscriptions, update, view)
 
 import File exposing (File)
 import Html exposing (Html, button, div, form, i, img, input, label, text, textarea)
@@ -14,7 +14,8 @@ import YaMap
 
 
 type alias Model =
-    { number : String
+    { address : String
+    , number : String
     , comment : String
     , photos : List ( File, String )
     }
@@ -22,7 +23,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model "" "" []
+    ( Model "" "" "" []
     , YaMap.init "ya-map"
     )
 
@@ -32,12 +33,21 @@ destroy =
     YaMap.destroy
 
 
+isValid : Model -> Bool
+isValid model =
+    String.isEmpty (String.trim model.address)
+        || String.isEmpty (String.trim model.number)
+        || List.isEmpty model.photos
+        |> not
+
+
 
 -- U P D A T E
 
 
 type Msg
-    = ChangeNumber String
+    = ChangeAddress String
+    | ChangeNumber String
     | ChangeComment String
     | UploadFiles (List File)
     | PreviewFiles (List ( File, String ))
@@ -47,6 +57,11 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ChangeAddress nextAddress ->
+            ( { model | address = nextAddress }
+            , Cmd.none
+            )
+
         ChangeNumber nextNumber ->
             ( { model | number = nextNumber }
             , Cmd.none
@@ -77,13 +92,22 @@ update msg model =
 
 
 
+-- S U B S C R I P T I O N
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.map ChangeAddress YaMap.onAddress
+
+
+
 -- V I E W
 
 
 viewPhoto : Int -> ( File, String ) -> Html Msg
 viewPhoto index ( file, base64 ) =
     div
-        [ Html.Attributes.class "col-sm-3 col-4 mt-3"
+        [ Html.Attributes.class "col-sm-3 col-4"
         ]
         [ img
             [ Html.Attributes.class "img-thumbnail"
@@ -97,15 +121,17 @@ viewPhoto index ( file, base64 ) =
 viewAddPhoto : Html Msg
 viewAddPhoto =
     div
-        [ Html.Attributes.class "col-sm-3 col-4 mt-3"
+        [ Html.Attributes.class "col-sm-3 col-4"
         ]
         [ label
             [ Html.Attributes.class "card"
             ]
-            [ i [ Html.Attributes.class "fa fa-plus fa-3x p-3 text-center text-primary" ] []
+            [ i [ Html.Attributes.class "fa fa-camera fa-3x p-3 text-center text-primary" ] []
             , input
                 [ Html.Attributes.class "create-report__file-input"
                 , Html.Attributes.type_ "file"
+                , Html.Attributes.accept "image/*"
+                , Html.Attributes.attribute "capture" "camera"
                 , Html.Attributes.multiple True
                 , Html.Events.on "change"
                     (Decode.list File.decoder
@@ -131,20 +157,39 @@ view model =
             ]
             []
         , form
-            [ Html.Attributes.class "container-fluid mb-3"
+            [ Html.Attributes.class "container-fluid my-3"
             , Html.Attributes.novalidate True
             ]
-            [ if List.length model.photos < 6 then
-                div
-                    [ Html.Attributes.class "form-group row"
+            [ div
+                [ Html.Attributes.class "form-group"
+                ]
+                [ label [] [ text "Адрес" ]
+                , input
+                    [ Html.Attributes.class "form-control"
+                    , Html.Attributes.type_ "text"
+                    , Html.Attributes.value model.address
+                    , Html.Attributes.placeholder "Выберите на карте"
+                    , Html.Attributes.required True
+                    , Html.Events.onInput ChangeNumber
                     ]
-                    (viewAddPhoto :: List.indexedMap viewPhoto model.photos)
+                    []
+                ]
+            , div
+                [ Html.Attributes.class "form-group"
+                ]
+                [ label [] [ text "Фото транспортного средства" ]
+                , if List.length model.photos < 6 then
+                    div
+                        [ Html.Attributes.class "form-group row mb-0"
+                        ]
+                        (viewAddPhoto :: List.indexedMap viewPhoto model.photos)
 
-              else
-                div
-                    [ Html.Attributes.class "form-group row"
-                    ]
-                    (List.indexedMap viewPhoto model.photos)
+                  else
+                    div
+                        [ Html.Attributes.class "form-group row mb-0"
+                        ]
+                        (List.indexedMap viewPhoto model.photos)
+                ]
             , div
                 [ Html.Attributes.class "form-group"
                 ]
@@ -174,6 +219,7 @@ view model =
                 ]
             , button
                 [ Html.Attributes.class "btn btn-block btn-success"
+                , Html.Attributes.disabled (not (isValid model))
                 ]
                 [ i [ Html.Attributes.class "fa fa-paper-plane mr-2" ] []
                 , text "Отправить"

@@ -35,11 +35,53 @@ ymaps.ready(function() {
             yaMap.destroy();
         }
 
+        var myPlacemark;
+
         yaMap = new ymaps.Map(nodeId, Object.assign({
             controls: [ 'zoomControl', 'geolocationControl' ]
         }, config, {
             zoom: 17
         }))
+
+        yaMap.events.add('click', function(event) {
+            var coords = event.get('coords');
+
+            // Если метка уже создана – просто передвигаем ее.
+            if (myPlacemark) {
+                myPlacemark.geometry.setCoordinates(coords);
+            }
+            // Если нет – создаем.
+            else {
+                myPlacemark = createPlacemark(coords);
+                yaMap.geoObjects.add(myPlacemark);
+                // Слушаем событие окончания перетаскивания на метке.
+                myPlacemark.events.add('dragend', function () {
+                    getAddress(myPlacemark.geometry.getCoordinates());
+                });
+            }
+            getAddress(coords);
+        });
+
+        // Создание метки.
+        function createPlacemark(coords) {
+            return new ymaps.Placemark(coords, {
+            }, {
+                preset: 'islands#violetDotIconWithCaption',
+                draggable: true
+            });
+        }
+
+        // Определяем адрес по координатам (обратное геокодирование).
+        function getAddress(coords) {
+            ymaps.geocode(coords).then(function (res) {
+                var firstGeoObject = res.geoObjects.get(0);
+
+                app.ports.ya_map__on_address.send([
+                    firstGeoObject.getThoroughfare() || firstGeoObject.getPremise(),
+                    firstGeoObject.getPremiseNumber()
+                ].join(" "));
+            });
+        }
     }
 
     app.ports.ya_map__destroy.subscribe(function() {
