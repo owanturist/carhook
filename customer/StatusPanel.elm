@@ -48,7 +48,7 @@ update msg reportId model =
         Abort ->
             Updated
                 ( { model | aborting = Loading }
-                , Cmd.none
+                , Cmd.map AbortDone (Api.abortRequest reportId)
                 )
 
         AbortDone (Err error) ->

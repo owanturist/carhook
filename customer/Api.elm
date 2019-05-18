@@ -1,4 +1,4 @@
-module Api exposing (Report, createRequest, getListOfReports, getReport)
+module Api exposing (Report, abortRequest, createRequest, getListOfReports, getReport)
 
 import File exposing (File)
 import Http
@@ -104,6 +104,24 @@ createRequest payload =
                 |> List.concatMap identity
                 |> Http.multipartBody
         , expect = Http.expectJson identity (Decode.field "id" ID.decoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+abortRequest : ID { report : () } -> Cmd (Result Http.Error Report)
+abortRequest reportId =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = crossOrigin endpoint [ "set_order_status" ] []
+        , body =
+            [ ( "id", ID.encoder reportId )
+            , ( "status", Encode.int 4 )
+            ]
+                |> Encode.object
+                |> Http.jsonBody
+        , expect = Http.expectJson identity reportDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

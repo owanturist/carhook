@@ -69,3 +69,5 @@ decoder =
                     Decode.fail ("Status " ++ String.fromInt stat ++ " is invalid")
         )
         Decode.int
+
+
