@@ -2,7 +2,7 @@ module Home exposing (Model, Msg, init, update, view)
 
 import Api
 import Error
-import Html exposing (Html, a, div, h5, i, img, p, q, small, span, text)
+import Html exposing (Html, a, button, div, h5, i, img, p, q, small, span, text)
 import Html.Attributes
 import Http
 import RemoteData exposing (RemoteData(..))
@@ -174,7 +174,17 @@ viewReportCard report =
                 , div
                     [ Html.Attributes.class "card-footer"
                     ]
-                    [ small [ Html.Attributes.class "text-muted" ] [ text (posixToFullDate report.date) ]
+                    [ if report.status == Api.Ready then
+                        button
+                            [ Html.Attributes.class "home__card-overz btn btn-sm btn-danger mr-2"
+                            , Html.Attributes.tabindex 1
+                            ]
+                            [ i [ Html.Attributes.class "fa fa-undo" ] []
+                            ]
+
+                      else
+                        text ""
+                    , small [ Html.Attributes.class "text-muted" ] [ text (posixToFullDate report.date) ]
                     ]
                 ]
             ]

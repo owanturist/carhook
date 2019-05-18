@@ -1,9 +1,10 @@
-module Api exposing (Reason(..), Report, Status(..), createRequest, getListOfReports)
+module Api exposing (Reason(..), Report, Status(..), createRequest, getListOfReports, getReport)
 
 import File exposing (File)
 import Http
 import ID exposing (ID)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Task exposing (Task)
 import Time
 import Url.Builder exposing (crossOrigin)
@@ -99,6 +100,23 @@ reportDecoder =
         (Decode.field "car_code" (Decode.nullable Decode.string))
         (Decode.field "comment" (Decode.nullable Decode.string))
         (Decode.field "photos" (Decode.list (Decode.map ((++) "http://carhook.ru") Decode.string)))
+
+
+getReport : ID { report : () } -> Cmd (Result Http.Error Report)
+getReport reportId =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = crossOrigin endpoint [ "get_order" ] []
+        , body =
+            [ ( "id", ID.encoder reportId )
+            ]
+                |> Encode.object
+                |> Http.jsonBody
+        , expect = Http.expectJson identity reportDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 
 getListOfReports : Cmd (Result Http.Error (List Report))

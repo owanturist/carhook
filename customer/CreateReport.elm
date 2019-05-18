@@ -193,7 +193,7 @@ view model =
             RemoteData.isLoading model.creation
     in
     div
-        [ Html.Attributes.class "create-report"
+        [ Html.Attributes.class "container-fluid create-report"
         ]
         [ div
             [ Html.Attributes.class "bg-secondary"
@@ -203,7 +203,7 @@ view model =
             ]
             []
         , form
-            [ Html.Attributes.class "container-fluid my-3"
+            [ Html.Attributes.class "my-3"
             , Html.Attributes.novalidate True
             , Html.Events.onSubmit SubmitCreation
             ]

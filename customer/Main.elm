@@ -10,6 +10,7 @@ import Html.Attributes
 import ID exposing (ID)
 import Router
 import Url exposing (Url)
+import ViewReport
 
 
 
@@ -25,13 +26,14 @@ type alias Flags =
 
 
 type Page
-    = HomePage Home.Model
+    = Void
+    | HomePage Home.Model
     | CreateReportPage CreateReport.Model
-    | ViewReportPage (ID { report : () })
+    | ViewReportPage (ID { report : () }) ViewReport.Model
 
 
-initPage : Router.Route -> ( Page, Cmd Msg )
-initPage route =
+initPage : Glob -> Router.Route -> ( Page, Cmd Msg )
+initPage glob route =
     case route of
         Router.ToHome ->
             Tuple.mapBoth HomePage (Cmd.map HomeMsg) Home.init
@@ -40,10 +42,10 @@ initPage route =
             Tuple.mapBoth CreateReportPage (Cmd.map CreateReportMsg) CreateReport.init
 
         Router.ToViewReport reportId ->
-            ( ViewReportPage reportId, Cmd.none )
+            Tuple.mapBoth (ViewReportPage reportId) (Cmd.map ViewReportMsg) (ViewReport.init reportId)
 
-        _ ->
-            Debug.todo "initPage "
+        Router.ToNotFound ->
+            ( Void, Router.push glob.key Router.ToHome )
 
 
 type Model
@@ -53,10 +55,10 @@ type Model
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags initialUrl key =
     let
-        ( initialPage, initialCmdOfPage ) =
-            initPage (Router.parse initialUrl)
+        glob =
+            Glob key
     in
-    ( Model (Glob key) initialPage, initialCmdOfPage )
+    Tuple.mapFirst (Model glob) (initPage glob (Router.parse initialUrl))
 
 
 
@@ -68,6 +70,7 @@ type Msg
     | UrlChanged Url
     | HomeMsg Home.Msg
     | CreateReportMsg CreateReport.Msg
+    | ViewReportMsg ViewReport.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -92,7 +95,7 @@ update msg model =
             )
 
         ( UrlChanged url, Model glob page ) ->
-            Tuple.mapFirst (Model glob) (initPage (Router.parse url))
+            Tuple.mapFirst (Model glob) (initPage glob (Router.parse url))
 
         ( HomeMsg msgOfHome, Model glob (HomePage homePage) ) ->
             ( Model glob (HomePage (Home.update msgOfHome homePage))
@@ -112,6 +115,18 @@ update msg model =
             )
 
         ( CreateReportMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( ViewReportMsg msgOfViewReport, Model glob (ViewReportPage viewReportId viewReportPage) ) ->
+            let
+                ( nextViewReportPage, cmdOfViewReport ) =
+                    ViewReport.update msgOfViewReport viewReportId viewReportPage
+            in
+            ( Model glob (ViewReportPage viewReportId nextViewReportPage)
+            , Cmd.map ViewReportMsg cmdOfViewReport
+            )
+
+        ( ViewReportMsg _, _ ) ->
             ( model, Cmd.none )
 
 
@@ -165,14 +180,17 @@ view (Model glob page) =
             ]
             [ viewNav
             , case page of
+                Void ->
+                    text ""
+
                 HomePage homePage ->
                     Html.map HomeMsg (Home.view homePage)
 
                 CreateReportPage createReportPage ->
                     Html.map CreateReportMsg (CreateReport.view createReportPage)
 
-                ViewReportPage reportId ->
-                    text ("Report #" ++ ID.toString reportId)
+                ViewReportPage reportId viewReportPage ->
+                    Html.map ViewReportMsg (ViewReport.view viewReportPage)
             ]
         ]
 
