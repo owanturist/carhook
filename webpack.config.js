@@ -120,8 +120,8 @@ module.exports = env => ({
     entry: [
         '@fortawesome/fontawesome-free/css/all.css',
         'bootstrap/dist/css/bootstrap.css',
-        path.resolve('./customer/styles.css'),
-        path.resolve('./customer/index.js')
+        path.resolve('./src/styles.css'),
+        path.resolve('./customer.js')
     ],
 
     output: {

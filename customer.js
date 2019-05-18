@@ -1,4 +1,4 @@
-const compiled = require('./Main.elm');
+const compiled = require('./src/Main.elm');
 
 function noop() {}
 
