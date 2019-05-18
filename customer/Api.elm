@@ -52,32 +52,32 @@ type Status
 statusDecoder : Decoder Status
 statusDecoder =
     Decode.andThen
-        (\type_ ->
-            case type_ of
-                "READY" ->
+        (\stat ->
+            case stat of
+                0 ->
                     Decode.succeed Ready
 
-                "ACCEPTED" ->
+                1 ->
                     Decode.map Accepted
                         (Decode.field "date" posixDecoder)
 
-                "DECLINED" ->
+                2 ->
+                    Decode.map InProgress
+                        (Decode.field "date" posixDecoder)
+
+                3 ->
+                    Decode.map Done
+                        (Decode.field "date" posixDecoder)
+
+                4 ->
                     Decode.map2 Declined
                         (Decode.field "date" posixDecoder)
                         (Decode.field "reason" reasonDecoder)
 
-                "IN_PROGRESS" ->
-                    Decode.map InProgress
-                        (Decode.field "date" posixDecoder)
-
-                "DONE" ->
-                    Decode.map Done
-                        (Decode.field "date" posixDecoder)
-
                 _ ->
-                    Decode.fail "Status is invalid"
+                    Decode.fail ("Status " ++ String.fromInt stat ++ " is invalid")
         )
-        (Decode.field "type" Decode.string)
+        Decode.int
 
 
 type alias Report =
@@ -93,12 +93,12 @@ type alias Report =
 reportDecoder : Decoder Report
 reportDecoder =
     Decode.map6 Report
-        (Decode.field "id" ID.decoder)
-        (Decode.field "date" posixDecoder)
+        (Decode.field "_id" ID.decoder)
+        (Decode.field "create_time" posixDecoder)
         (Decode.field "status" statusDecoder)
-        (Decode.field "number" (Decode.nullable Decode.string))
+        (Decode.field "car_code" (Decode.nullable Decode.string))
         (Decode.field "comment" (Decode.nullable Decode.string))
-        (Decode.field "photos" (Decode.list Decode.string))
+        (Decode.field "photos" (Decode.list (Decode.map ((++) "http://carhook.ru") Decode.string)))
 
 
 getListOfReports : Cmd (Result Http.Error (List Report))

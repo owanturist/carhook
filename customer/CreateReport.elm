@@ -1,6 +1,7 @@
 module CreateReport exposing (Model, Msg, destroy, init, subscriptions, update, view)
 
 import Api
+import Error
 import File exposing (File)
 import Glob exposing (Glob)
 import Html exposing (Html, br, button, code, div, form, i, img, input, label, text, textarea)
@@ -267,33 +268,8 @@ view model =
                     []
                 ]
             , case model.creation of
-                Failure (Http.BadUrl _) ->
-                    div
-                        [ Html.Attributes.class "alert alert-danger" ]
-                        [ text "Разработчики наговнокодили" ]
-
-                Failure Http.Timeout ->
-                    div
-                        [ Html.Attributes.class "alert alert-danger" ]
-                        [ text "Медленное интернет соединение" ]
-
-                Failure Http.NetworkError ->
-                    div
-                        [ Html.Attributes.class "alert alert-danger" ]
-                        [ text "Проверьте подключение к интернету" ]
-
-                Failure (Http.BadStatus status) ->
-                    div
-                        [ Html.Attributes.class "alert alert-danger" ]
-                        [ text ("Запрос упал (STATUS: " ++ String.fromInt status ++ ")") ]
-
-                Failure (Http.BadBody error) ->
-                    div
-                        [ Html.Attributes.class "alert alert-danger" ]
-                        [ text "Плохой ответ от сервера:"
-                        , br [] []
-                        , code [] [ text error ]
-                        ]
+                Failure err ->
+                    Error.view err
 
                 _ ->
                     text ""

@@ -1,6 +1,7 @@
 module Home exposing (Model, Msg, init, update, view)
 
 import Api
+import Error
 import Html exposing (Html, a, div, h5, i, img, p, q, small, span, text)
 import Html.Attributes
 import Http
@@ -49,7 +50,7 @@ update msg model =
 posixToFullDate : Time.Posix -> String
 posixToFullDate posix =
     Time.Format.format Time.Format.Config.Config_ru_ru.config
-        "%H:%M, %-@d %B %Y %A"
+        "%-@d %B %Y, %A, %H:%M"
         Time.utc
         posix
 
@@ -183,6 +184,13 @@ viewReportCard report =
 view : Model -> Html Msg
 view model =
     case model.reports of
+        Failure error ->
+            div
+                [ Html.Attributes.class "home container-fluid my-3"
+                ]
+                [ Error.view error
+                ]
+
         Success reports ->
             div
                 [ Html.Attributes.class "home container-fluid"
