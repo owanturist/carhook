@@ -1,12 +1,27 @@
-port module YaMap exposing (destroy, init, onAddress)
+port module YaMap exposing (destroy, init, onAddress, setAddress)
 
 
-port ya_map__init : String -> Cmd msg
+port ya_map__init :
+    { nodeId : String
+    , interactive : Bool
+    }
+    -> Cmd msg
 
 
-init : String -> Cmd msg
-init =
+init : String -> Bool -> Cmd msg
+init nodeId interactive =
     ya_map__init
+        { nodeId = nodeId
+        , interactive = interactive
+        }
+
+
+port ya_map__set_address : String -> Cmd msg
+
+
+setAddress : String -> Cmd msg
+setAddress =
+    ya_map__set_address
 
 
 port ya_map__destroy : () -> Cmd msg

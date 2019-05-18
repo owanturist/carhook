@@ -83,6 +83,9 @@ update msg model =
                     CreateReportPage _ ->
                         Cmd.map CreateReportMsg CreateReport.destroy
 
+                    ViewReportPage _ _ ->
+                        Cmd.map ViewReportMsg ViewReport.destroy
+
                     _ ->
                         Cmd.none
                 , Browser.Navigation.pushUrl glob.key (Url.toString url)

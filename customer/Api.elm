@@ -84,6 +84,7 @@ statusDecoder =
 type alias Report =
     { id : ID { report : () }
     , date : Time.Posix
+    , address : String
     , status : Status
     , number : Maybe String
     , comment : Maybe String
@@ -93,9 +94,10 @@ type alias Report =
 
 reportDecoder : Decoder Report
 reportDecoder =
-    Decode.map6 Report
+    Decode.map7 Report
         (Decode.field "_id" ID.decoder)
         (Decode.field "create_time" posixDecoder)
+        (Decode.field "address" Decode.string)
         (Decode.field "status" statusDecoder)
         (Decode.field "car_code" (Decode.nullable Decode.string))
         (Decode.field "comment" (Decode.nullable Decode.string))

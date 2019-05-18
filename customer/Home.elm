@@ -179,7 +179,7 @@ viewReportCard report =
                             [ Html.Attributes.class "home__card-overz btn btn-sm btn-danger mr-2"
                             , Html.Attributes.tabindex 1
                             ]
-                            [ i [ Html.Attributes.class "fa fa-undo" ] []
+                            [ i [ Html.Attributes.class "fa fa-ban" ] []
                             ]
 
                       else

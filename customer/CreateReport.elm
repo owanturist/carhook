@@ -32,7 +32,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( Model NotAsked "" "" "" []
-    , YaMap.init "ya-map"
+    , YaMap.init "ya-map" True
     )
 
 
@@ -193,17 +193,17 @@ view model =
             RemoteData.isLoading model.creation
     in
     div
-        [ Html.Attributes.class "container-fluid create-report"
+        [ Html.Attributes.class "create-report"
         ]
         [ div
-            [ Html.Attributes.class "bg-secondary"
+            [ Html.Attributes.class "bg-light"
             , Html.Attributes.id "ya-map"
             , Html.Attributes.style "width" "100%"
             , Html.Attributes.style "height" "300px"
             ]
             []
         , form
-            [ Html.Attributes.class "my-3"
+            [ Html.Attributes.class "container-fluid my-3"
             , Html.Attributes.novalidate True
             , Html.Events.onSubmit SubmitCreation
             ]

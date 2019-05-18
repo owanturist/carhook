@@ -1,4 +1,4 @@
-module ViewReport exposing (Model, Msg, init, subscriptions, update, view)
+module ViewReport exposing (Model, Msg, destroy, init, update, view)
 
 import Api
 import Error
@@ -22,7 +22,10 @@ type alias Model =
 init : ID { report : () } -> ( Model, Cmd Msg )
 init reportId =
     ( Model Loading
-    , Cmd.map GetReportDone (Api.getReport reportId)
+    , Cmd.batch
+        [ Cmd.map GetReportDone (Api.getReport reportId)
+        , YaMap.init "ya-map" False
+        ]
     )
 
 
@@ -42,19 +45,15 @@ type Msg
 update : Msg -> ID { report : () } -> Model -> ( Model, Cmd Msg )
 update msg reportId model =
     case msg of
-        GetReportDone result ->
-            ( { model | report = RemoteData.fromResult result }
+        GetReportDone (Err err) ->
+            ( { model | report = Failure err }
             , Cmd.none
             )
 
-
-
--- S U B S C R I P T O N
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+        GetReportDone (Ok report) ->
+            ( { model | report = Success report }
+            , YaMap.setAddress report.address
+            )
 
 
 
@@ -65,10 +64,24 @@ view : Model -> Html Msg
 view model =
     case model.report of
         Failure error ->
-            div [ Html.Attributes.class "container-fluid" ] [ Error.view error ]
+            div [ Html.Attributes.class "container-fluid my-3" ] [ Error.view error ]
 
         Success report ->
-            div [] [ text (ID.toString report.id) ]
+            div
+                []
+                [ div
+                    [ Html.Attributes.class "bg-light"
+                    , Html.Attributes.id "ya-map"
+                    , Html.Attributes.style "width" "100%"
+                    , Html.Attributes.style "height" "300px"
+                    ]
+                    []
+                , div
+                    [ Html.Attributes.class "container-fluid my-3"
+                    ]
+                    [ text (ID.toString report.id)
+                    ]
+                ]
 
         _ ->
             div [] []
