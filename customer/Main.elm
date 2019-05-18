@@ -37,9 +37,10 @@ initPage route =
             Tuple.mapBoth HomePage (Cmd.map HomeMsg) Home.init
 
         Router.ToCreateReport ->
-            ( CreateReportPage CreateReport.init
-            , Cmd.none
-            )
+            Tuple.mapBoth CreateReportPage (Cmd.map CreateReportMsg) CreateReport.init
+
+        Router.ToViewReport reportId ->
+            ( ViewReportPage reportId, Cmd.none )
 
         _ ->
             Debug.todo "initPage "
@@ -72,9 +73,17 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
-        ( UrlRequested (Browser.Internal url), Model glob _ ) ->
+        ( UrlRequested (Browser.Internal url), Model glob page ) ->
             ( model
-            , Browser.Navigation.pushUrl glob.key (Url.toString url)
+            , Cmd.batch
+                [ case page of
+                    CreateReportPage _ ->
+                        Cmd.map CreateReportMsg CreateReport.destroy
+
+                    _ ->
+                        Cmd.none
+                , Browser.Navigation.pushUrl glob.key (Url.toString url)
+                ]
             )
 
         ( UrlRequested (Browser.External uri), _ ) ->
@@ -82,7 +91,7 @@ update msg model =
             , Browser.Navigation.load uri
             )
 
-        ( UrlChanged url, Model glob _ ) ->
+        ( UrlChanged url, Model glob page ) ->
             Tuple.mapFirst (Model glob) (initPage (Router.parse url))
 
         ( HomeMsg msgOfHome, Model glob (HomePage homePage) ) ->
@@ -121,11 +130,12 @@ viewNav =
         [ Html.Attributes.class "main__nav navbar navbar-dark bg-dark"
         ]
         [ a
-            [ Html.Attributes.class "navbar-brand"
+            [ Html.Attributes.class "main__logo navbar-brand"
             , Html.Attributes.href (Router.toString Router.ToHome)
             , Html.Attributes.tabindex 1
             ]
-            [ i [ Html.Attributes.class "fa fa-car" ] []
+            [ text "c a r "
+            , i [ Html.Attributes.class "fa fa-car" ] []
             , text " h o o k"
             ]
         , a
@@ -133,7 +143,7 @@ viewNav =
             , Html.Attributes.href (Router.toString Router.ToCreateReport)
             , Html.Attributes.tabindex 1
             ]
-            [ i [ Html.Attributes.class "fa fa-plus" ] []
+            [ i [ Html.Attributes.class "fa fa-shipping-fast" ] []
             ]
         ]
 
@@ -152,13 +162,8 @@ view (Model glob page) =
                 CreateReportPage createReportPage ->
                     Html.map CreateReportMsg (CreateReport.view createReportPage)
 
-                _ ->
-                    Debug.todo "view"
-
-            -- , div
-            --     [ Html.Attributes.class "main__content"
-            --     ]
-            --     []
+                ViewReportPage reportId ->
+                    text ("Report #" ++ ID.toString reportId)
             ]
         ]
 

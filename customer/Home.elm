@@ -1,10 +1,11 @@
 module Home exposing (Model, Msg, init, update, view)
 
 import Api
-import Html exposing (Html, div, h5, i, img, p, q, small, span, text)
+import Html exposing (Html, a, div, h5, i, img, p, q, small, span, text)
 import Html.Attributes
 import Http
 import RemoteData exposing (RemoteData(..))
+import Router
 import Time
 import Time.Format
 import Time.Format.Config.Config_ru_ru
@@ -113,7 +114,13 @@ viewReportCard report =
     div
         [ Html.Attributes.class "card text-white bg-dark my-3"
         ]
-        [ div
+        [ a
+            [ Html.Attributes.class "home__card-link"
+            , Html.Attributes.href (Router.toString (Router.ToViewReport report.id))
+            , Html.Attributes.tabindex 1
+            ]
+            []
+        , div
             [ Html.Attributes.class "row no-gutters"
             ]
             [ div

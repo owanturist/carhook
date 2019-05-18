@@ -1,6 +1,8 @@
-module CreateReport exposing (Model, Msg, init, update, view)
+module CreateReport exposing (Model, Msg, init, update, view, destroy)
 
 import Html exposing (Html, div, text)
+import Html.Attributes
+import YaMap
 
 
 
@@ -11,9 +13,16 @@ type alias Model =
     {}
 
 
-init : Model
+init : ( Model, Cmd Msg )
 init =
-    {}
+    ( {}
+    , YaMap.init
+    )
+
+
+destroy : Cmd Msg
+destroy =
+    YaMap.destroy
 
 
 
@@ -35,4 +44,12 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [] [text "Create"]
+    div
+        []
+        [ div
+            [ Html.Attributes.id "ya-map"
+            , Html.Attributes.style "width" "100%"
+            , Html.Attributes.style "height" "300px"
+            ]
+            []
+        ]
