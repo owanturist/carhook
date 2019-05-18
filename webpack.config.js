@@ -38,8 +38,7 @@ const getRules = env => [
                     {
                         loader: 'css-loader',
                         options: {
-                            importLoaders: 1,
-                            minimize: true
+                            importLoaders: 1
                         }
                     },
                     {
@@ -90,6 +89,7 @@ const getPlugins = env => [
     }),
     new HtmlWebpackPlugin({
         template: path.resolve('./index.html'),
+        filename: env.APP + '.html',
         inject: 'body',
         // favicon: path.resolve('./src/favicon.ico'),
         minify: env.PRODUCTION && {
@@ -108,7 +108,7 @@ const getPlugins = env => [
 ].concat(env.PRODUCTION
     ? [
         new ExtractTextPlugin({
-            filename: '[name].css',
+            filename: env.APP + '.css',
             ignoreOrder: true
         }),
         new OptimizeCSSAssetsPlugin()
@@ -121,12 +121,12 @@ module.exports = env => ({
         '@fortawesome/fontawesome-free/css/all.css',
         'bootstrap/dist/css/bootstrap.css',
         path.resolve('./src/styles.css'),
-        path.resolve('./customer.js')
+        path.resolve('./' + env.APP + '.js')
     ],
 
     output: {
         path: path.resolve('./build'),
-        filename: '[name].js',
+        filename: env.APP + '.js',
         publicPath: '/'
     },
 
