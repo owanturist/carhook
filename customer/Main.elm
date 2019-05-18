@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation
+import CreateReport
 import Glob exposing (Glob)
 import Home
 import Html exposing (Html, a, div, form, i, nav, text)
@@ -25,7 +26,7 @@ type alias Flags =
 
 type Page
     = HomePage Home.Model
-    | CreateReportPage
+    | CreateReportPage CreateReport.Model
     | ViewReportPage (ID { report : () })
 
 
@@ -34,6 +35,11 @@ initPage route =
     case route of
         Router.ToHome ->
             Tuple.mapBoth HomePage (Cmd.map HomeMsg) Home.init
+
+        Router.ToCreateReport ->
+            ( CreateReportPage CreateReport.init
+            , Cmd.none
+            )
 
         _ ->
             Debug.todo "initPage "
@@ -60,6 +66,7 @@ type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | HomeMsg Home.Msg
+    | CreateReportMsg CreateReport.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -75,8 +82,8 @@ update msg model =
             , Browser.Navigation.load uri
             )
 
-        ( UrlChanged url, Model _ _ ) ->
-            ( model, Cmd.none )
+        ( UrlChanged url, Model glob _ ) ->
+            Tuple.mapFirst (Model glob) (initPage (Router.parse url))
 
         ( HomeMsg msgOfHome, Model glob (HomePage homePage) ) ->
             ( Model glob (HomePage (Home.update msgOfHome homePage))
@@ -84,6 +91,14 @@ update msg model =
             )
 
         ( HomeMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( CreateReportMsg msgOfCreateReport, Model glob (CreateReportPage createReportPage) ) ->
+            ( Model glob (CreateReportPage (CreateReport.update msgOfCreateReport createReportPage))
+            , Cmd.none
+            )
+
+        ( CreateReportMsg _, _ ) ->
             ( model, Cmd.none )
 
 
@@ -133,6 +148,9 @@ view (Model glob page) =
             , case page of
                 HomePage homePage ->
                     Html.map HomeMsg (Home.view homePage)
+
+                CreateReportPage createReportPage ->
+                    Html.map CreateReportMsg (CreateReport.view createReportPage)
 
                 _ ->
                     Debug.todo "view"
