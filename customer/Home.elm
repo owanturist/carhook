@@ -112,7 +112,7 @@ viewReportStatus status =
 viewReportCard : Api.Report -> Html Msg
 viewReportCard report =
     div
-        [ Html.Attributes.class "card text-white bg-dark my-3"
+        [ Html.Attributes.class "card bg-light my-3"
         ]
         [ a
             [ Html.Attributes.class "home__card-link"

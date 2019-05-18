@@ -103,8 +103,12 @@ update msg model =
             ( model, Cmd.none )
 
         ( CreateReportMsg msgOfCreateReport, Model glob (CreateReportPage createReportPage) ) ->
-            ( Model glob (CreateReportPage (CreateReport.update msgOfCreateReport createReportPage))
-            , Cmd.none
+            let
+                ( nextCreateReport, cmdOfCreateReport ) =
+                    CreateReport.update msgOfCreateReport createReportPage
+            in
+            ( Model glob (CreateReportPage nextCreateReport)
+            , Cmd.map CreateReportMsg cmdOfCreateReport
             )
 
         ( CreateReportMsg _, _ ) ->
@@ -127,7 +131,7 @@ subscriptions model =
 viewNav : Html msg
 viewNav =
     nav
-        [ Html.Attributes.class "main__nav navbar navbar-dark bg-dark"
+        [ Html.Attributes.class "main__nav navbar navbar-light bg-light"
         ]
         [ a
             [ Html.Attributes.class "main__logo navbar-brand"
@@ -139,7 +143,7 @@ viewNav =
             , text " h o o k"
             ]
         , a
-            [ Html.Attributes.class "btn btn-warning text-dark"
+            [ Html.Attributes.class "btn btn-warning text-light"
             , Html.Attributes.href (Router.toString Router.ToCreateReport)
             , Html.Attributes.tabindex 1
             ]
@@ -152,7 +156,7 @@ view : Model -> Browser.Document Msg
 view (Model glob page) =
     Browser.Document "Car Hook"
         [ div
-            [ Html.Attributes.class "main bg-secondary"
+            [ Html.Attributes.class "main"
             ]
             [ viewNav
             , case page of
