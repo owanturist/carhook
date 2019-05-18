@@ -117,7 +117,12 @@ const getPlugins = env => [
 );
 
 module.exports = env => ({
-    entry: path.resolve('./customer/index.js'),
+    entry: [
+        '@fortawesome/fontawesome-free/css/all.css',
+        'bootstrap/dist/css/bootstrap.css',
+        path.resolve('./customer/styles.css'),
+        path.resolve('./customer/index.js')
+    ],
 
     output: {
         path: path.resolve('./build'),

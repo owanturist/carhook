@@ -1,0 +1,8 @@
+@import "./Main.pcss";
+@import "./Home.pcss";
+
+html,
+body {
+    min-height: 100%;
+    height: 100%;
+}

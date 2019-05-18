@@ -1,0 +1,17 @@
+.home {
+    & {
+        overflow-y: auto;
+    }
+
+    &__card-photo {
+        height: 100%;
+        padding-top: 50%;
+        border-radius: calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0;
+        background: no-repeat center / cover;
+
+        @media screen and (min-width: var(--breakpoint-sm)) {
+            padding-top: 0;
+            border-radius: calc(0.25rem - 1px) 0 0 calc(0.25rem - 1px);
+        }
+    }
+}

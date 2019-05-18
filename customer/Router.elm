@@ -3,7 +3,7 @@ module Router exposing (Route(..), parse, toString)
 import ID exposing (ID)
 import Url exposing (Url)
 import Url.Builder exposing (absolute)
-import Url.Parser exposing ((</>), Parser)
+import Url.Parser exposing ((</>), Parser, s)
 
 
 type Route
@@ -33,6 +33,8 @@ parser : Parser (Route -> a) a
 parser =
     Url.Parser.oneOf
         [ Url.Parser.map ToHome Url.Parser.top
+        , Url.Parser.map ToCreateReport (s "report")
+        , Url.Parser.map ToViewReport (s "report" </> ID.parser)
         ]
 
 

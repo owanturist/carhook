@@ -2,7 +2,10 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation
-import Html exposing (Html, div, text)
+import Glob exposing (Glob)
+import Home
+import Html exposing (Html, a, div, form, i, nav, text)
+import Html.Attributes
 import ID exposing (ID)
 import Router
 import Url exposing (Url)
@@ -21,20 +24,23 @@ type alias Flags =
 
 
 type Page
-    = HomePage
+    = HomePage Home.Model
     | CreateReportPage
     | ViewReportPage (ID { report : () })
 
 
 initPage : Router.Route -> ( Page, Cmd Msg )
 initPage route =
-    ( HomePage, Cmd.none )
+    case route of
+        Router.ToHome ->
+            Tuple.mapBoth HomePage (Cmd.map HomeMsg) Home.init
+
+        _ ->
+            Debug.todo "initPage "
 
 
-type alias Model =
-    { key : Browser.Navigation.Key
-    , page : Page
-    }
+type Model
+    = Model Glob Page
 
 
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
@@ -43,7 +49,7 @@ init flags initialUrl key =
         ( initialPage, initialCmdOfPage ) =
             initPage (Router.parse initialUrl)
     in
-    ( Model key initialPage, initialCmdOfPage )
+    ( Model (Glob key) initialPage, initialCmdOfPage )
 
 
 
@@ -53,22 +59,31 @@ init flags initialUrl key =
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
+    | HomeMsg Home.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        UrlRequested (Browser.Internal url) ->
+    case ( msg, model ) of
+        ( UrlRequested (Browser.Internal url), Model glob _ ) ->
             ( model
-            , Browser.Navigation.pushUrl model.key (Url.toString url)
+            , Browser.Navigation.pushUrl glob.key (Url.toString url)
             )
 
-        UrlRequested (Browser.External uri) ->
+        ( UrlRequested (Browser.External uri), _ ) ->
             ( model
             , Browser.Navigation.load uri
             )
 
-        UrlChanged url ->
+        ( UrlChanged url, Model _ _ ) ->
+            ( model, Cmd.none )
+
+        ( HomeMsg msgOfHome, Model glob (HomePage homePage) ) ->
+            ( Model glob (HomePage (Home.update msgOfHome homePage))
+            , Cmd.none
+            )
+
+        ( HomeMsg _, _ ) ->
             ( model, Cmd.none )
 
 
@@ -85,10 +100,48 @@ subscriptions model =
 -- V I E W
 
 
+viewNav : Html msg
+viewNav =
+    nav
+        [ Html.Attributes.class "main__nav navbar navbar-dark bg-dark"
+        ]
+        [ a
+            [ Html.Attributes.class "navbar-brand"
+            , Html.Attributes.href (Router.toString Router.ToHome)
+            , Html.Attributes.tabindex 1
+            ]
+            [ i [ Html.Attributes.class "fa fa-car" ] []
+            , text " h o o k"
+            ]
+        , a
+            [ Html.Attributes.class "btn btn-warning text-dark"
+            , Html.Attributes.href (Router.toString Router.ToCreateReport)
+            , Html.Attributes.tabindex 1
+            ]
+            [ i [ Html.Attributes.class "fa fa-plus" ] []
+            ]
+        ]
+
+
 view : Model -> Browser.Document Msg
-view model =
+view (Model glob page) =
     Browser.Document "Car Hook"
-        [ text "hi!"
+        [ div
+            [ Html.Attributes.class "main bg-secondary"
+            ]
+            [ viewNav
+            , case page of
+                HomePage homePage ->
+                    Html.map HomeMsg (Home.view homePage)
+
+                _ ->
+                    Debug.todo "view"
+
+            -- , div
+            --     [ Html.Attributes.class "main__content"
+            --     ]
+            --     []
+            ]
         ]
 
 
