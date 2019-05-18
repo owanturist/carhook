@@ -1,6 +1,8 @@
+@import "./StatusPanel.pcss";
 @import "./Main.pcss";
 @import "./Home.pcss";
 @import "./CreateReport.pcss";
+@import "./ViewReport.pcss";
 
 html,
 body {

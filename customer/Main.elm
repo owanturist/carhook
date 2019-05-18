@@ -101,9 +101,7 @@ update msg model =
             Tuple.mapFirst (Model glob) (initPage glob (Router.parse url))
 
         ( HomeMsg msgOfHome, Model glob (HomePage homePage) ) ->
-            ( Model glob (HomePage (Home.update msgOfHome homePage))
-            , Cmd.none
-            )
+            Tuple.mapBoth (Model glob << HomePage) (Cmd.map HomeMsg) (Home.update msgOfHome homePage)
 
         ( HomeMsg _, _ ) ->
             ( model, Cmd.none )

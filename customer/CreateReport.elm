@@ -4,7 +4,7 @@ import Api
 import Error
 import File exposing (File)
 import Glob exposing (Glob)
-import Html exposing (Html, br, button, code, div, form, i, img, input, label, text, textarea)
+import Html exposing (Html, br, button, code, div, form, i, img, input, label, q, text, textarea)
 import Html.Attributes
 import Html.Events
 import Http
@@ -21,7 +21,7 @@ import YaMap
 
 
 type alias Model =
-    { creation : RemoteData Http.Error ()
+    { creation : RemoteData Http.Error Never
     , address : String
     , number : String
     , comment : String
@@ -210,7 +210,7 @@ view model =
             [ div
                 [ Html.Attributes.class "form-group"
                 ]
-                [ label [] [ text "Адрес" ]
+                [ label [ Html.Attributes.class "small" ] [ text "Адрес:" ]
                 , input
                     [ Html.Attributes.class "form-control"
                     , Html.Attributes.type_ "text"
@@ -225,7 +225,7 @@ view model =
             , div
                 [ Html.Attributes.class "form-group"
                 ]
-                [ label [] [ text "Фото транспортного средства" ]
+                [ label [ Html.Attributes.class "small" ] [ text "Фото транспортного средства:" ]
                 , if List.length model.photos < 6 then
                     div
                         [ Html.Attributes.class "form-group row mb-0"
@@ -241,7 +241,7 @@ view model =
             , div
                 [ Html.Attributes.class "form-group"
                 ]
-                [ label [] [ text "Гос номер" ]
+                [ label [ Html.Attributes.class "small" ] [ text "Гос номер:" ]
                 , input
                     [ Html.Attributes.class "form-control"
                     , Html.Attributes.type_ "text"
@@ -256,7 +256,7 @@ view model =
             , div
                 [ Html.Attributes.class "form-group"
                 ]
-                [ label [] [ text "Комментарий" ]
+                [ label [ Html.Attributes.class "small" ] [ text "Комментарий:" ]
                 , textarea
                     [ Html.Attributes.class "form-control"
                     , Html.Attributes.value model.comment
@@ -275,12 +275,11 @@ view model =
                     text ""
             , button
                 [ Html.Attributes.class "btn btn-block btn-success"
-                , Html.Attributes.disabled (not (isValid model))
                 , Html.Attributes.type_ "submit"
                 , Html.Attributes.disabled (busy || not (isValid model))
                 ]
                 [ i [ Html.Attributes.class "fa fa-paper-plane mr-2" ] []
-                , text "Отправить"
+                , text "Эвакуировать"
                 ]
             ]
         ]

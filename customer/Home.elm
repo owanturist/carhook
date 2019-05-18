@@ -1,12 +1,15 @@
 module Home exposing (Model, Msg, init, update, view)
 
 import Api
+import Dict exposing (Dict)
 import Error
 import Html exposing (Html, a, button, div, h5, i, img, p, q, small, span, text)
 import Html.Attributes
 import Http
+import ID exposing (ID)
 import RemoteData exposing (RemoteData(..))
 import Router
+import StatusPanel
 import Time
 import Time.Format
 import Time.Format.Config.Config_ru_ru
@@ -17,13 +20,15 @@ import Time.Format.Config.Config_ru_ru
 
 
 type alias Model =
-    { reports : RemoteData Http.Error (List Api.Report)
+    { reports : RemoteData Http.Error (List (ID { report : () }))
+    , reportsDict : Dict String Api.Report
+    , statusPanels : Dict String StatusPanel.Model
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model Loading
+    ( Model Loading Dict.empty Dict.empty
     , Cmd.map GetListOfReportsDone Api.getListOfReports
     )
 
@@ -34,13 +39,52 @@ init =
 
 type Msg
     = GetListOfReportsDone (Result Http.Error (List Api.Report))
+    | StatusPanelMsg (ID { report : () }) StatusPanel.Msg
 
 
-update : Msg -> Model -> Model
+insertToDict : { entity | id : ID supported } -> Dict String { entity | id : ID supported } -> Dict String { entity | id : ID supported }
+insertToDict entity dict =
+    Dict.insert (ID.toString entity.id) entity dict
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GetListOfReportsDone result ->
-            { model | reports = RemoteData.fromResult result }
+        GetListOfReportsDone (Err error) ->
+            ( { model | reports = Failure error }
+            , Cmd.none
+            )
+
+        GetListOfReportsDone (Ok reports) ->
+            let
+                reportsDict =
+                    List.foldr insertToDict Dict.empty reports
+            in
+            ( { model
+                | reports = Success (List.map .id reports)
+                , reportsDict = reportsDict
+              }
+            , Cmd.none
+            )
+
+        StatusPanelMsg reportId msgOfStatusPanel ->
+            let
+                updateStatusPanel mod stage =
+                    case stage of
+                        StatusPanel.Updated ( nextStatusPanel, cmdOfStatusPanel ) ->
+                            ( { mod | statusPanels = Dict.insert (ID.toString reportId) nextStatusPanel mod.statusPanels }
+                            , Cmd.map (StatusPanelMsg reportId) cmdOfStatusPanel
+                            )
+
+                        StatusPanel.Abordted updatedReport subStage ->
+                            updateStatusPanel
+                                { mod | reportsDict = insertToDict updatedReport mod.reportsDict }
+                                subStage
+            in
+            Dict.get (ID.toString reportId) model.statusPanels
+                |> Maybe.withDefault StatusPanel.initial
+                |> StatusPanel.update msgOfStatusPanel reportId
+                |> updateStatusPanel model
 
 
 
@@ -55,63 +99,8 @@ posixToFullDate posix =
         posix
 
 
-posixToShortDate : Time.Posix -> String
-posixToShortDate posix =
-    Time.Format.format Time.Format.Config.Config_ru_ru.config
-        "%H:%M"
-        Time.utc
-        posix
-
-
-viewReportStatus : Api.Status -> Html Msg
-viewReportStatus status =
-    case status of
-        Api.Ready ->
-            span []
-                [ i [ Html.Attributes.class "fa fa-lg fa-map mr-2" ] []
-                , text "Ожидает транспортировки"
-                ]
-
-        Api.Accepted startDate ->
-            span []
-                [ i [ Html.Attributes.class "fa fa-lg fa-shipping-fast mr-2" ] []
-                , text ("Эвакуатор в пути c " ++ posixToShortDate startDate)
-                ]
-
-        Api.Declined stopDate reason ->
-            div []
-                [ div
-                    []
-                    [ i [ Html.Attributes.class "fa fa-lg fa-ban mr-2 text-danger" ] []
-                    , text ("Запрос отклонён в " ++ posixToShortDate stopDate)
-                    ]
-                , q
-                    [ Html.Attributes.class "blockquote-footer"
-                    ]
-                    [ case reason of
-                        Api.RulesFollowed ->
-                            text "Правила не нарушены"
-
-                        Api.PhotosUnclear ->
-                            text "Фото не исчерпывающие"
-                    ]
-                ]
-
-        Api.InProgress startDate ->
-            span []
-                [ i [ Html.Attributes.class "fa fa-lg fa-truck-loading mr-2" ] []
-                , text ("Эвакуация началась в " ++ posixToShortDate startDate)
-                ]
-
-        Api.Done endDate ->
-            span []
-                [ i [ Html.Attributes.class "fa fa-lg fa-clipboard-check mr-2" ] []
-                , text ("Эвакуирован в " ++ posixToShortDate endDate)
-                ]
-
-
-viewReportCard : Api.Report -> Html Msg
-viewReportCard report =
+viewReportCard : StatusPanel.Model -> Api.Report -> Html Msg
+viewReportCard statusPanel report =
     div
         [ Html.Attributes.class "card bg-light my-3"
         ]
@@ -144,47 +133,27 @@ viewReportCard report =
                 [ div
                     [ Html.Attributes.class "card-header"
                     ]
-                    [ viewReportStatus report.status
+                    [ Html.map (StatusPanelMsg report.id) (StatusPanel.view report.status statusPanel)
                     ]
-                , case ( report.number, report.comment ) of
-                    ( Nothing, Nothing ) ->
-                        text ""
-
-                    ( Nothing, Just comment ) ->
+                , case report.comment of
+                    Nothing ->
                         div
                             [ Html.Attributes.class "card-body"
                             ]
-                            [ p [ Html.Attributes.class "cart-text mb-0" ] [ text comment ]
+                            [ h5 [ Html.Attributes.class "card-title m-0" ] [ text report.number ]
                             ]
 
-                    ( Just number, Nothing ) ->
+                    Just comment ->
                         div
                             [ Html.Attributes.class "card-body"
                             ]
-                            [ h5 [ Html.Attributes.class "card-title m-0" ] [ text number ]
-                            ]
-
-                    ( Just number, Just comment ) ->
-                        div
-                            [ Html.Attributes.class "card-body"
-                            ]
-                            [ h5 [ Html.Attributes.class "card-title" ] [ text number ]
+                            [ h5 [ Html.Attributes.class "card-title" ] [ text report.number ]
                             , p [ Html.Attributes.class "cart-text mb-0" ] [ text comment ]
                             ]
                 , div
                     [ Html.Attributes.class "card-footer"
                     ]
-                    [ if report.status == Api.Ready then
-                        button
-                            [ Html.Attributes.class "home__card-overz btn btn-sm btn-danger mr-2"
-                            , Html.Attributes.tabindex 1
-                            ]
-                            [ i [ Html.Attributes.class "fa fa-ban" ] []
-                            ]
-
-                      else
-                        text ""
-                    , small [ Html.Attributes.class "text-muted" ] [ text (posixToFullDate report.date) ]
+                    [ small [ Html.Attributes.class "text-muted" ] [ text (posixToFullDate report.date) ]
                     ]
                 ]
             ]
@@ -205,7 +174,16 @@ view model =
             div
                 [ Html.Attributes.class "home container-fluid"
                 ]
-                (List.map viewReportCard reports)
+                (List.filterMap
+                    (\reportId ->
+                        Maybe.map
+                            (viewReportCard
+                                (Maybe.withDefault StatusPanel.initial (Dict.get (ID.toString reportId) model.statusPanels))
+                            )
+                            (Dict.get (ID.toString reportId) model.reportsDict)
+                    )
+                    reports
+                )
 
         _ ->
             div [] []

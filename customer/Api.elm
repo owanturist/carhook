@@ -1,10 +1,11 @@
-module Api exposing (Reason(..), Report, Status(..), createRequest, getListOfReports, getReport)
+module Api exposing (Report, createRequest, getListOfReports, getReport)
 
 import File exposing (File)
 import Http
 import ID exposing (ID)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Status exposing (Status)
 import Task exposing (Task)
 import Time
 import Url.Builder exposing (crossOrigin)
@@ -20,73 +21,12 @@ posixDecoder =
     Decode.map Time.millisToPosix Decode.int
 
 
-type Reason
-    = RulesFollowed
-    | PhotosUnclear
-
-
-reasonDecoder : Decoder Reason
-reasonDecoder =
-    Decode.andThen
-        (\res ->
-            case res of
-                0 ->
-                    Decode.succeed RulesFollowed
-
-                1 ->
-                    Decode.succeed PhotosUnclear
-
-                _ ->
-                    Decode.fail "Reason is invalid"
-        )
-        Decode.int
-
-
-type Status
-    = Ready
-    | Accepted Time.Posix
-    | Declined Time.Posix Reason
-    | InProgress Time.Posix
-    | Done Time.Posix
-
-
-statusDecoder : Decoder Status
-statusDecoder =
-    Decode.andThen
-        (\stat ->
-            case stat of
-                0 ->
-                    Decode.succeed Ready
-
-                1 ->
-                    Decode.map Accepted
-                        (Decode.field "date" posixDecoder)
-
-                2 ->
-                    Decode.map InProgress
-                        (Decode.field "date" posixDecoder)
-
-                3 ->
-                    Decode.map Done
-                        (Decode.field "date" posixDecoder)
-
-                4 ->
-                    Decode.map2 Declined
-                        (Decode.field "date" posixDecoder)
-                        (Decode.field "reason" reasonDecoder)
-
-                _ ->
-                    Decode.fail ("Status " ++ String.fromInt stat ++ " is invalid")
-        )
-        Decode.int
-
-
 type alias Report =
     { id : ID { report : () }
     , date : Time.Posix
     , address : String
     , status : Status
-    , number : Maybe String
+    , number : String
     , comment : Maybe String
     , photos : List String
     }
@@ -98,8 +38,8 @@ reportDecoder =
         (Decode.field "_id" ID.decoder)
         (Decode.field "create_time" posixDecoder)
         (Decode.field "address" Decode.string)
-        (Decode.field "status" statusDecoder)
-        (Decode.field "car_code" (Decode.nullable Decode.string))
+        (Decode.field "status" Status.decoder)
+        (Decode.field "car_code" Decode.string)
         (Decode.field "comment" (Decode.nullable Decode.string))
         (Decode.field "photos" (Decode.list (Decode.map ((++) "http://carhook.ru") Decode.string)))
 
