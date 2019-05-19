@@ -20,7 +20,7 @@ import Url.Builder exposing (crossOrigin)
 
 endpoint : String
 endpoint =
-    "http://carhook.ru/api"
+    "//carhook.ru/api"
 
 
 posixDecoder : Decoder Time.Posix
@@ -48,7 +48,7 @@ reportDecoder =
         (Status.decoder "status")
         (Decode.field "car_code" Decode.string)
         (Decode.maybe (Decode.field "comment" Decode.string))
-        (Decode.field "photos" (Decode.list (Decode.map ((++) "http://carhook.ru") Decode.string)))
+        (Decode.field "photos" (Decode.list Decode.string))
 
 
 getReport : ID { report : () } -> Cmd (Result Http.Error Report)
