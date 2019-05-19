@@ -1,4 +1,4 @@
-module Api exposing (Report, abortRequest, createRequest, getListOfReports, getReport)
+module Api exposing (Report, changeReportStatus, createRequest, getListOfReports, getReport)
 
 import File exposing (File)
 import Http
@@ -109,15 +109,15 @@ createRequest payload =
         }
 
 
-abortRequest : ID { report : () } -> Cmd (Result Http.Error Report)
-abortRequest reportId =
+changeReportStatus : Int -> ID { report : () } -> Cmd (Result Http.Error Report)
+changeReportStatus stat reportId =
     Http.request
         { method = "POST"
         , headers = []
         , url = crossOrigin endpoint [ "set_order_status" ] []
         , body =
             [ ( "id", ID.encoder reportId )
-            , ( "status", Encode.int 4 )
+            , ( "status", Encode.int stat )
             ]
                 |> Encode.object
                 |> Http.jsonBody

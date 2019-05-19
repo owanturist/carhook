@@ -191,7 +191,7 @@ view (Model glob page) =
                     Html.map CreateReportMsg (CreateReport.view createReportPage)
 
                 ViewReportPage reportId viewReportPage ->
-                    Html.map ViewReportMsg (ViewReport.view viewReportPage)
+                    Html.map ViewReportMsg (ViewReport.view True viewReportPage)
             ]
         ]
 

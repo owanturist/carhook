@@ -60,17 +60,20 @@ update msg reportId model =
 
         StatusPanelMsg msgOfStatusPanel ->
             let
-                updateStatusPanel mod stage =
+                updateStatusPanel mod cmd stage =
                     case stage of
                         StatusPanel.Updated ( nextStatusPanel, cmdOfStatusPanel ) ->
                             ( { mod | statusPanel = nextStatusPanel }
-                            , Cmd.map StatusPanelMsg cmdOfStatusPanel
+                            , Cmd.batch
+                                [ Cmd.map StatusPanelMsg cmdOfStatusPanel
+                                , cmd
+                                ]
                             )
 
-                        StatusPanel.Abordted updatedReport subStage ->
-                            updateStatusPanel { mod | report = Success updatedReport } subStage
+                        StatusPanel.StatusChanged updatedReport subStage ->
+                            updateStatusPanel { mod | report = Success updatedReport } cmd subStage
             in
-            updateStatusPanel model (StatusPanel.update msgOfStatusPanel reportId model.statusPanel)
+            updateStatusPanel model Cmd.none (StatusPanel.update msgOfStatusPanel reportId model.statusPanel)
 
 
 
@@ -90,8 +93,8 @@ viewPhoto uri =
         ]
 
 
-view : Model -> Html Msg
-view model =
+view : Bool -> Model -> Html Msg
+view isCustomer model =
     case model.report of
         Failure error ->
             div [ Html.Attributes.class "view-report container-fluid my-3" ] [ Error.view error ]
@@ -113,7 +116,7 @@ view model =
                     [ div
                         [ Html.Attributes.class "form-group"
                         ]
-                        [ Html.map StatusPanelMsg (StatusPanel.view report.status model.statusPanel)
+                        [ Html.map StatusPanelMsg (StatusPanel.view isCustomer report.status model.statusPanel)
                         ]
                     , div
                         [ Html.Attributes.class "form-group"

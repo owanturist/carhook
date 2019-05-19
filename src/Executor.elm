@@ -15,6 +15,7 @@ import Status
 import Url exposing (Url)
 import Url.Builder exposing (absolute)
 import Url.Parser exposing ((</>), Parser, s)
+import ViewReport
 import YaMap
 
 
@@ -38,7 +39,7 @@ initHome =
     ( Home Loading Dict.empty
     , Cmd.batch
         [ Cmd.map GetListOfReportsDone Api.getListOfReports
-        , YaMap.init "ya-map" False
+        , YaMap.init "ya-map" True
         ]
     )
 
@@ -66,6 +67,9 @@ updateHome msg glob model =
                                     True
 
                                 Status.InProgress _ ->
+                                    True
+
+                                Status.Accepted _ ->
                                     True
 
                                 _ ->
@@ -145,7 +149,7 @@ parseRoute =
 type Page
     = VoidPage
     | HomePage Home
-    | ReportPage (ID { report : () })
+    | ReportPage (ID { report : () }) ViewReport.Model
 
 
 initPage : Glob -> Route -> ( Page, Cmd Msg )
@@ -155,7 +159,7 @@ initPage glob route =
             Tuple.mapBoth HomePage (Cmd.map HomeMsg) initHome
 
         ToReport reportId ->
-            Debug.todo "ToReport"
+            Tuple.mapBoth (ReportPage reportId) (Cmd.map ViewReportMsg) (ViewReport.init reportId)
 
         ToNotFound ->
             ( VoidPage
@@ -184,6 +188,7 @@ type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | HomeMsg HomeMsg
+    | ViewReportMsg ViewReport.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -196,6 +201,9 @@ update msg (Model glob page) =
                 , case page of
                     HomePage _ ->
                         YaMap.destroy
+
+                    ReportPage _ _ ->
+                        Cmd.map ViewReportMsg ViewReport.destroy
 
                     _ ->
                         Cmd.none
@@ -217,6 +225,18 @@ update msg (Model glob page) =
                 (updateHome msgOfHome glob homePage)
 
         ( HomeMsg _, _ ) ->
+            ( Model glob page, Cmd.none )
+
+        ( ViewReportMsg msgOfViewReport, ReportPage viewReportId viewReportPage ) ->
+            let
+                ( nextViewReportPage, cmdOfViewReport ) =
+                    ViewReport.update msgOfViewReport viewReportId viewReportPage
+            in
+            ( Model glob (ReportPage viewReportId nextViewReportPage)
+            , Cmd.map ViewReportMsg cmdOfViewReport
+            )
+
+        ( ViewReportMsg _, _ ) ->
             ( Model glob page, Cmd.none )
 
 
@@ -260,16 +280,20 @@ viewNav =
 view : Model -> Browser.Document Msg
 view (Model _ page) =
     Browser.Document "Car Hook | Executor"
-        [ viewNav
-        , case page of
-            VoidPage ->
-                text ""
+        [ div
+            [ Html.Attributes.class "executor"
+            ]
+            [ viewNav
+            , case page of
+                VoidPage ->
+                    text ""
 
-            HomePage homePage ->
-                Html.map HomeMsg (viewHome homePage)
+                HomePage homePage ->
+                    Html.map HomeMsg (viewHome homePage)
 
-            ReportPage _ ->
-                Debug.todo "ReportPage"
+                ReportPage _ reportPage ->
+                    Html.map ViewReportMsg (ViewReport.view False reportPage)
+            ]
         ]
 
 

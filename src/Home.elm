@@ -69,22 +69,26 @@ update msg model =
 
         StatusPanelMsg reportId msgOfStatusPanel ->
             let
-                updateStatusPanel mod stage =
+                updateStatusPanel mod cmd stage =
                     case stage of
                         StatusPanel.Updated ( nextStatusPanel, cmdOfStatusPanel ) ->
                             ( { mod | statusPanels = Dict.insert (ID.toString reportId) nextStatusPanel mod.statusPanels }
-                            , Cmd.map (StatusPanelMsg reportId) cmdOfStatusPanel
+                            , Cmd.batch
+                                [ Cmd.map (StatusPanelMsg reportId) cmdOfStatusPanel
+                                , cmd
+                                ]
                             )
 
-                        StatusPanel.Abordted updatedReport subStage ->
+                        StatusPanel.StatusChanged updatedReport subStage ->
                             updateStatusPanel
                                 { mod | reportsDict = insertToDict updatedReport mod.reportsDict }
+                                cmd
                                 subStage
             in
             Dict.get (ID.toString reportId) model.statusPanels
                 |> Maybe.withDefault StatusPanel.initial
                 |> StatusPanel.update msgOfStatusPanel reportId
-                |> updateStatusPanel model
+                |> updateStatusPanel model Cmd.none
 
 
 
@@ -133,7 +137,7 @@ viewReportCard statusPanel report =
                 [ div
                     [ Html.Attributes.class "card-header"
                     ]
-                    [ Html.map (StatusPanelMsg report.id) (StatusPanel.view report.status statusPanel)
+                    [ Html.map (StatusPanelMsg report.id) (StatusPanel.view True report.status statusPanel)
                     ]
                 , case report.comment of
                     Nothing ->

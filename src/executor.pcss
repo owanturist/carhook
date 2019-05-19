@@ -1,3 +1,6 @@
+@import "./StatusPanel.pcss";
+@import "./ViewReport.pcss";
+
 html,
 body {
     min-height: 100%;
@@ -6,6 +9,12 @@ body {
 }
 
 .executor {
+    & {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
     &__logo {
         outline: none;
     }
