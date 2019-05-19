@@ -40,7 +40,7 @@ reportDecoder =
         (Decode.field "address" Decode.string)
         (Status.decoder "status")
         (Decode.field "car_code" Decode.string)
-        (Decode.field "comment" (Decode.nullable Decode.string))
+        (Decode.maybe (Decode.field "comment" Decode.string))
         (Decode.field "photos" (Decode.list (Decode.map ((++) "http://carhook.ru") Decode.string)))
 
 

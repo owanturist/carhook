@@ -1,3 +1,5 @@
+require('./src/styles.pcss');
+
 const compiled = require('./src/Main.elm');
 
 function noop() {}

@@ -89,7 +89,7 @@ const getPlugins = env => [
     }),
     new HtmlWebpackPlugin({
         template: path.resolve('./index.html'),
-        filename: env.APP + '.html',
+        filename: env.PRODUCTION ? env.APP + '.html' : 'index.html',
         inject: 'body',
         // favicon: path.resolve('./src/favicon.ico'),
         minify: env.PRODUCTION && {
@@ -120,7 +120,6 @@ module.exports = env => ({
     entry: [
         '@fortawesome/fontawesome-free/css/all.css',
         'bootstrap/dist/css/bootstrap.css',
-        path.resolve('./src/styles.css'),
         path.resolve('./' + env.APP + '.js')
     ],
 

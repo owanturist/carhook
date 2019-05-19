@@ -45,7 +45,7 @@ initPage glob route =
             Tuple.mapBoth (ViewReportPage reportId) (Cmd.map ViewReportMsg) (ViewReport.init reportId)
 
         Router.ToNotFound ->
-            ( Void, Router.push glob.key Router.ToHome )
+            ( Void, Router.replace glob.key Router.ToHome )
 
 
 type Model
