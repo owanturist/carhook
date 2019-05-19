@@ -120,8 +120,8 @@ posixToFullDate posix =
         posix
 
 
-viewReportCard : StatusPanel.Model -> Api.Report -> Html Msg
-viewReportCard statusPanel report =
+viewReportCard : Api.Report -> StatusPanel.Model -> Html Msg
+viewReportCard report statusPanel =
     div
         [ Html.Attributes.class "card bg-light my-3"
         ]
@@ -195,15 +195,16 @@ view model =
             div
                 [ Html.Attributes.class "home container-fluid"
                 ]
-                (List.filterMap
-                    (\reportId ->
-                        Maybe.map
-                            (viewReportCard
-                                (Maybe.withDefault StatusPanel.initial (Dict.get (ID.toString reportId) model.statusPanels))
-                            )
-                            (Dict.get (ID.toString reportId) model.reportsDict)
-                    )
-                    reports
+                (reports
+                    |> List.filterMap (\reportId -> Dict.get (ID.toString reportId) model.reportsDict)
+                    |> List.sortBy (negate << Time.posixToMillis << .date)
+                    |> List.map
+                        (\report ->
+                            model.statusPanels
+                                |> Dict.get (ID.toString report.id)
+                                |> Maybe.withDefault StatusPanel.initial
+                                |> viewReportCard report
+                        )
                 )
 
         _ ->
