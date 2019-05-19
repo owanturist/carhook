@@ -2,5 +2,20 @@
     & {
         overflow-x: hidden;
         overflow-y: auto;
+
+        &_previewed {
+            overflow: hidden;
+        }
+    }
+
+    &__preview {
+        position: fixed;
+        z-index: 2;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        margin: 0;
+        background: rgba(30, 30, 30, .9) no-repeat center / contain;
     }
 }

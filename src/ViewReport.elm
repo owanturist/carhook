@@ -1,9 +1,10 @@
-module ViewReport exposing (Model, Msg, destroy, init, update, view, subscriptions)
+module ViewReport exposing (Model, Msg, destroy, init, subscriptions, update, view)
 
 import Api
 import Error
-import Html exposing (Html, button, div, form, i, img, label, q, span, text)
+import Html exposing (Html, button, div, form, i, img, label, li, ol, q, span, text)
 import Html.Attributes
+import Html.Events
 import Http
 import ID exposing (ID)
 import Json.Decode as Decode
@@ -18,13 +19,14 @@ import YaMap
 
 type alias Model =
     { report : RemoteData Http.Error Api.Report
+    , photoPreview : Maybe Int
     , statusPanel : StatusPanel.Model
     }
 
 
 init : ID { report : () } -> ( Model, Cmd Msg )
 init reportId =
-    ( Model Loading StatusPanel.initial
+    ( Model Loading Nothing StatusPanel.initial
     , Cmd.batch
         [ Cmd.map GetReportDone (Api.getReport reportId)
         , YaMap.init "ya-map" False
@@ -43,8 +45,10 @@ destroy =
 
 type Msg
     = GetReportDone (Result Http.Error Api.Report)
-    | StatusPanelMsg StatusPanel.Msg
     | OnReportChanged (Result Decode.Error Api.Report)
+    | ShowPhoto Int
+    | HidePhoto
+    | StatusPanelMsg StatusPanel.Msg
 
 
 update : Msg -> ID { report : () } -> Model -> ( Model, Cmd Msg )
@@ -58,6 +62,26 @@ update msg reportId model =
         GetReportDone (Ok report) ->
             ( { model | report = Success report }
             , YaMap.setAddress report.address
+            )
+
+        OnReportChanged (Err err) ->
+            ( { model | report = Failure (Http.BadBody (Decode.errorToString err)) }
+            , Cmd.none
+            )
+
+        OnReportChanged (Ok report) ->
+            ( { model | report = Success report }
+            , Cmd.none
+            )
+
+        ShowPhoto index ->
+            ( { model | photoPreview = Just index }
+            , Cmd.none
+            )
+
+        HidePhoto ->
+            ( { model | photoPreview = Nothing }
+            , Cmd.none
             )
 
         StatusPanelMsg msgOfStatusPanel ->
@@ -77,16 +101,6 @@ update msg reportId model =
             in
             updateStatusPanel model Cmd.none (StatusPanel.update msgOfStatusPanel reportId model.statusPanel)
 
-        OnReportChanged (Err err) ->
-            ( { model | report = Failure (Http.BadBody (Decode.errorToString err)) }
-            , Cmd.none
-            )
-
-        OnReportChanged (Ok report) ->
-            ( { model | report = Success report }
-            , Cmd.none
-            )
-
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -97,10 +111,12 @@ subscriptions model =
 -- V I E W
 
 
-viewPhoto : String -> Html msg
-viewPhoto uri =
+viewPhoto : Int -> String -> Html Msg
+viewPhoto index uri =
     div
         [ Html.Attributes.class "col-sm-3 col-4"
+        , Html.Events.preventDefaultOn "touchstart" (Decode.succeed ( ShowPhoto index, True ))
+        , Html.Events.preventDefaultOn "touchend" (Decode.succeed ( HidePhoto, True ))
         ]
         [ img
             [ Html.Attributes.class "img-thumbnail"
@@ -118,7 +134,11 @@ view isCustomer model =
 
         Success report ->
             div
-                [ Html.Attributes.class "view-report" ]
+                [ Html.Attributes.classList
+                    [ ( "view-report", True )
+                    , ( "view-report_previewed", model.photoPreview /= Nothing )
+                    ]
+                ]
                 [ div
                     [ Html.Attributes.class "bg-light"
                     , Html.Attributes.id "ya-map"
@@ -151,7 +171,7 @@ view isCustomer model =
                         , div
                             [ Html.Attributes.class "form-group row mb-0"
                             ]
-                            (List.map viewPhoto report.photos)
+                            (List.indexedMap viewPhoto report.photos)
                         ]
                     , div
                         [ Html.Attributes.class "form-group"
@@ -177,6 +197,16 @@ view isCustomer model =
                                     [ text comment ]
                                 ]
                     ]
+                , case Maybe.map (\index -> List.drop (index - 1) report.photos) model.photoPreview of
+                    Just (uri :: _) ->
+                        span
+                            [ Html.Attributes.class "view-report__preview"
+                            , Html.Attributes.style "background-image" ("url(" ++ uri ++ ")")
+                            ]
+                            []
+
+                    _ ->
+                        text ""
                 ]
 
         _ ->
