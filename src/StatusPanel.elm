@@ -126,13 +126,13 @@ view isCustomer status model =
                     [ i [ Html.Attributes.class "fa fa-lg fa-shipping-fast mr-2" ] []
                     , text ("Эвакуатор в пути c " ++ posixToShortDate startDate)
                     ]
-                , if isCustomer then
-                    text ""
+                , span
+                    []
+                    [ if isCustomer then
+                        text ""
 
-                  else
-                    span
-                        []
-                        [ button
+                      else
+                        button
                             [ Html.Attributes.class "status-panel__el-over btn btn-sm btn-success ml-2"
                             , Html.Attributes.type_ "button"
                             , Html.Attributes.disabled (RemoteData.isLoading model.aborting)
@@ -141,16 +141,16 @@ view isCustomer status model =
                             ]
                             [ i [ Html.Attributes.class "fa fa-fw fa-truck-loading" ] []
                             ]
-                        , button
-                            [ Html.Attributes.class "status-panel__el-over btn btn-sm btn-danger ml-2"
-                            , Html.Attributes.type_ "button"
-                            , Html.Attributes.disabled (RemoteData.isLoading model.aborting)
-                            , Html.Attributes.tabindex 1
-                            , Html.Events.onClick (ChangeStatus 4)
-                            ]
-                            [ i [ Html.Attributes.class "fa fa-fw fa-ban" ] []
-                            ]
+                    , button
+                        [ Html.Attributes.class "status-panel__el-over btn btn-sm btn-danger ml-2"
+                        , Html.Attributes.type_ "button"
+                        , Html.Attributes.disabled (RemoteData.isLoading model.aborting)
+                        , Html.Attributes.tabindex 1
+                        , Html.Events.onClick (ChangeStatus 4)
                         ]
+                        [ i [ Html.Attributes.class "fa fa-fw fa-ban" ] []
+                        ]
+                    ]
                 ]
 
         Declined stopDate reason ->

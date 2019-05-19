@@ -136,8 +136,8 @@ update msg glob model =
 -- S U B S C R I P T I O N
 
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions : Sub Msg
+subscriptions =
     Sub.map ChangeAddress YaMap.onAddress
 
 

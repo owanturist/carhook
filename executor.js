@@ -1,7 +1,10 @@
 require('./src/executor.pcss');
 
-const compiled = require('./src/Executor.elm');
+var compiled = require('./src/Executor.elm');
+var io = require('socket.io-client');
 
+var socket = io('http://carhook.ru:80');
+socket.emit('join_room', 'executor');
 
 function noop() { }
 
@@ -9,6 +12,15 @@ ymaps.ready(function () {
     var yaMap = null;
     var afterMapInited = noop;
     var app = compiled.Elm.Executor.init();
+
+    socket.on('change_status', function(report) {
+        console.log(report);
+        app.ports.api__on_change_report.send(report);
+    });
+
+    socket.on('create_order', function(report) {
+        app.ports.api__on_change_report.send(report);
+    });
 
     app.ports.ya_map__init.subscribe(function (payload) {
         setTimeout(() => {
@@ -46,8 +58,10 @@ ymaps.ready(function () {
         yaMap = new ymaps.Map(payload.nodeId, Object.assign({
             controls: ['zoomControl', 'geolocationControl']
         }, config, {
-                zoom: 13
-            }))
+            zoom: 13
+        }));
+
+        window.___ = yaMap;
 
         afterMapInited();
         afterMapInited = noop;
@@ -56,14 +70,19 @@ ymaps.ready(function () {
     app.ports.ya_map__set_addresses.subscribe(function (addresses) {
         if (yaMap == null) {
             afterMapInited = function () {
+                yaMap.geoObjects.removeAll();
                 drawAddresses(addresses);
             }
         } else {
+            yaMap.geoObjects.removeAll();
             drawAddresses(addresses);
         }
     });
 
     function drawAddresses(addresses) {
+        var collection = new ymaps.Collection();
+        yaMap.geoObjects.add(collection);
+
         addresses.forEach(function (payload) {
             ymaps.geocode(payload.address, {
                 results: 1
@@ -81,7 +100,7 @@ ymaps.ready(function () {
                     app.ports.ya_map__on_report.send(payload.id);
                 });
                 // Добавляем первый найденный геообъект на карту.
-                yaMap.geoObjects.add(firstGeoObject);
+                collection.add(firstGeoObject);
             });
         });
     }

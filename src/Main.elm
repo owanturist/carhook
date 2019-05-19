@@ -136,13 +136,8 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions (Model _ page) =
-    case page of
-        CreateReportPage createReport ->
-            Sub.map CreateReportMsg (CreateReport.subscriptions createReport)
-
-        _ ->
-            Sub.none
+subscriptions _ =
+    Sub.map CreateReportMsg CreateReport.subscriptions
 
 
 

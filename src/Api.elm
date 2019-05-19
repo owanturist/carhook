@@ -1,10 +1,17 @@
-module Api exposing (Report, changeReportStatus, createRequest, getListOfReports, getReport)
+port module Api exposing
+    ( Report
+    , changeReportStatus
+    , createRequest
+    , getListOfReports
+    , getReport
+    , onChangeReport
+    )
 
 import File exposing (File)
 import Http
 import ID exposing (ID)
-import Json.Decode as Decode exposing (Decoder)
-import Json.Encode as Encode
+import Json.Decode as Decode exposing (Decoder, decodeValue)
+import Json.Encode as Encode exposing (Value)
 import Status exposing (Status)
 import Task exposing (Task)
 import Time
@@ -105,7 +112,7 @@ createRequest payload =
                 |> Http.multipartBody
         , expect = Http.expectJson identity (Decode.field "id" ID.decoder)
         , timeout = Nothing
-        , tracker = Nothing
+        , tracker = Just "create"
         }
 
 
@@ -125,3 +132,11 @@ changeReportStatus stat reportId =
         , timeout = Nothing
         , tracker = Nothing
         }
+
+
+port api__on_change_report : (Value -> msg) -> Sub msg
+
+
+onChangeReport : Sub (Result Decode.Error Report)
+onChangeReport =
+    api__on_change_report (decodeValue reportDecoder)

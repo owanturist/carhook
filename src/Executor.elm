@@ -10,6 +10,7 @@ import Html exposing (Html, a, div, form, i, nav, span, text)
 import Html.Attributes
 import Http
 import ID exposing (ID)
+import Json.Decode as Decode
 import RemoteData exposing (RemoteData(..))
 import Status
 import Url exposing (Url)
@@ -42,6 +43,27 @@ initHome =
         , YaMap.init "ya-map" True
         ]
     )
+
+
+updateReportsInHome : Api.Report -> Home -> ( Home, Cmd HomeMsg )
+updateReportsInHome report home =
+    case home.reports of
+        Success reports ->
+            let
+                nextHome =
+                    { home
+                        | reports = Success (report.id :: reports)
+                        , reportsDict = insertToDict report home.reportsDict
+                    }
+            in
+            ( nextHome
+            , Dict.values nextHome.reportsDict
+                |> List.map (\r -> ( r.id, r.address ))
+                |> YaMap.setAddresses
+            )
+
+        _ ->
+            ( home, Cmd.none )
 
 
 type HomeMsg
@@ -187,6 +209,7 @@ init flags initialUrl key =
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
+    | OnReportChanged (Result Decode.Error Api.Report)
     | HomeMsg HomeMsg
     | ViewReportMsg ViewReport.Msg
 
@@ -224,6 +247,15 @@ update msg (Model glob page) =
                 (Cmd.map HomeMsg)
                 (updateHome msgOfHome glob homePage)
 
+        ( OnReportChanged (Ok report), HomePage homePage ) ->
+            Tuple.mapBoth
+                (Model glob << HomePage)
+                (Cmd.map HomeMsg)
+                (updateReportsInHome report homePage)
+
+        ( OnReportChanged _, _ ) ->
+            ( Model glob page, Cmd.none )
+
         ( HomeMsg _, _ ) ->
             ( Model glob page, Cmd.none )
 
@@ -246,12 +278,15 @@ update msg (Model glob page) =
 
 subscriptions : Model -> Sub Msg
 subscriptions (Model _ page) =
-    case page of
-        HomePage homePage ->
-            Sub.map HomeMsg (homeSubscriptions homePage)
+    Sub.batch
+        [ Sub.map OnReportChanged Api.onChangeReport
+        , case page of
+            HomePage homePage ->
+                Sub.map HomeMsg (homeSubscriptions homePage)
 
-        _ ->
-            Sub.none
+            _ ->
+                Sub.none
+        ]
 
 
 
