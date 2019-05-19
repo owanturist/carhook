@@ -1,4 +1,4 @@
-module Home exposing (Model, Msg, init, update, view)
+module Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
 import Dict exposing (Dict)
@@ -7,6 +7,7 @@ import Html exposing (Html, a, button, div, h5, i, img, p, q, small, span, text)
 import Html.Attributes
 import Http
 import ID exposing (ID)
+import Json.Decode as Decode
 import RemoteData exposing (RemoteData(..))
 import Router
 import StatusPanel
@@ -40,6 +41,7 @@ init =
 type Msg
     = GetListOfReportsDone (Result Http.Error (List Api.Report))
     | StatusPanelMsg (ID { report : () }) StatusPanel.Msg
+    | OnReportChanged (Result Decode.Error Api.Report)
 
 
 insertToDict : { entity | id : ID supported } -> Dict String { entity | id : ID supported } -> Dict String { entity | id : ID supported }
@@ -89,6 +91,21 @@ update msg model =
                 |> Maybe.withDefault StatusPanel.initial
                 |> StatusPanel.update msgOfStatusPanel reportId
                 |> updateStatusPanel model Cmd.none
+
+        OnReportChanged (Err err) ->
+            ( { model | reports = Failure (Http.BadBody (Decode.errorToString err)) }
+            , Cmd.none
+            )
+
+        OnReportChanged (Ok report) ->
+            ( { model | reportsDict = insertToDict report model.reportsDict }
+            , Cmd.none
+            )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.map OnReportChanged Api.onChangeReport
 
 
 

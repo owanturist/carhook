@@ -1,14 +1,26 @@
 require('./src/styles.pcss');
 
-const compiled = require('./src/Main.elm');
+var compiled = require('./src/Main.elm');
+var io = require('socket.io-client');
 
-function noop() {}
+var socket = io('http://carhook.ru:80');
+socket.emit('join_room', 'customer');
 
-ymaps.ready(function() {
+function noop() { }
+
+ymaps.ready(function () {
     var yaMap = null;
     var afterMapInited = noop;
     var app = compiled.Elm.Main.init({
         flags: {}
+    });
+
+    socket.on('change_status', function(report) {
+        app.ports.api__on_change_report.send(report);
+    });
+
+    socket.on('create_order', function(report) {
+        app.ports.api__on_change_report.send(report);
     });
 
     app.ports.ya_map__init.subscribe(function(payload) {
@@ -16,7 +28,7 @@ ymaps.ready(function() {
             ymaps.geolocation.get().then(function(result) {
                 var mapContainer = document.getElementById(payload.nodeId);
                 var bounds = result.geoObjects.get(0).properties.get('boundedBy');
-                    // Рассчитываем видимую область для текущей положения пользователя.
+                // Рассчитываем видимую область для текущей положения пользователя.
                 var mapState = ymaps.util.bounds.getCenterAndZoom(
                     bounds,
                     [mapContainer.clientWidth, mapContainer.clientHeight]
