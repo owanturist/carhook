@@ -9,4 +9,43 @@
         z-index: -1;
         opacity: 0;
     }
+
+    &__preview-container {
+        position: fixed;
+        z-index: 2;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        margin: 0;
+        background: rgba(30, 30, 30, .9);
+    }
+
+    &__preview {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        margin: 0 0 100px;
+        background: no-repeat center / contain;
+    }
+
+    &__photo-remover {
+        display: flex;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        height: 100px;
+        color: #fff;
+        background: rgba(0,0,0,.2);
+
+        &_active {
+            background: rgba(220, 53, 69, .5);
+        }
+    }
 }

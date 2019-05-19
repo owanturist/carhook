@@ -19,7 +19,7 @@ import YaMap
 
 type alias Model =
     { report : RemoteData Http.Error Api.Report
-    , photoPreview : Maybe Int
+    , preview : Maybe Int
     , statusPanel : StatusPanel.Model
     }
 
@@ -75,12 +75,12 @@ update msg reportId model =
             )
 
         ShowPhoto index ->
-            ( { model | photoPreview = Just index }
+            ( { model | preview = Just index }
             , Cmd.none
             )
 
         HidePhoto ->
-            ( { model | photoPreview = Nothing }
+            ( { model | preview = Nothing }
             , Cmd.none
             )
 
@@ -136,7 +136,7 @@ view isCustomer model =
             div
                 [ Html.Attributes.classList
                     [ ( "view-report", True )
-                    , ( "view-report_previewed", model.photoPreview /= Nothing )
+                    , ( "view-report_previewed", model.preview /= Nothing )
                     ]
                 ]
                 [ div
@@ -197,7 +197,7 @@ view isCustomer model =
                                     [ text comment ]
                                 ]
                     ]
-                , case Maybe.map (\index -> List.drop (index - 1) report.photos) model.photoPreview of
+                , case Maybe.map (\index -> List.drop (index - 1) report.photos) model.preview of
                     Just (uri :: _) ->
                         span
                             [ Html.Attributes.class "view-report__preview"

@@ -4,12 +4,12 @@ import Api
 import Error
 import File exposing (File)
 import Glob exposing (Glob)
-import Html exposing (Html, br, button, code, div, form, i, img, input, label, q, text, textarea)
+import Html exposing (Html, br, button, code, div, form, i, img, input, label, q, span, text, textarea)
 import Html.Attributes
 import Html.Events
 import Http
 import ID exposing (ID)
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder)
 import RemoteData exposing (RemoteData(..))
 import Router
 import Task
@@ -20,18 +20,24 @@ import YaMap
 -- M O D E L
 
 
+type Preview
+    = NoPreview
+    | Preview Int Float
+
+
 type alias Model =
     { creation : RemoteData Http.Error Never
     , address : String
     , number : String
     , comment : String
     , photos : List ( File, String )
+    , preview : Preview
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model NotAsked "" "" "" []
+    ( Model NotAsked "" "" "" [] NoPreview
     , YaMap.init "ya-map" True
     )
 
@@ -59,7 +65,10 @@ type Msg
     | ChangeComment String
     | UploadFiles (List File)
     | PreviewFiles (List ( File, String ))
-    | DeleteFile Int
+    | ShowPhoto Int Float
+    | HidePhoto
+    | DragPreview Float
+    | DeleteFile
     | SubmitCreation
     | SubmitCreationDone (Result Http.Error (ID { report : () }))
 
@@ -95,12 +104,45 @@ update msg glob model =
             , Cmd.none
             )
 
-        DeleteFile index ->
-            ( if RemoteData.isLoading model.creation then
-                model
+        ShowPhoto index start ->
+            ( { model | preview = Preview index start }
+            , Cmd.none
+            )
 
-              else
-                { model | photos = List.take index model.photos ++ List.drop (index + 1) model.photos }
+        HidePhoto ->
+            ( case model.preview of
+                NoPreview ->
+                    model
+
+                Preview index end ->
+                    if end < 100 then
+                        { model
+                            | preview = NoPreview
+                            , photos = List.take index model.photos ++ List.drop (index + 1) model.photos
+                        }
+
+                    else
+                        { model | preview = NoPreview }
+            , Cmd.none
+            )
+
+        DragPreview end ->
+            ( case model.preview of
+                NoPreview ->
+                    model
+
+                Preview index _ ->
+                    { model | preview = Preview index end }
+            , Cmd.none
+            )
+
+        DeleteFile ->
+            ( case model.preview of
+                Preview index _ ->
+                    { model | photos = List.take index model.photos ++ List.drop (index + 1) model.photos }
+
+                _ ->
+                    model
             , Cmd.none
             )
 
@@ -145,6 +187,13 @@ subscriptions =
 -- V I E W
 
 
+decodePageBottom : Decoder Float
+decodePageBottom =
+    Decode.map2 (-)
+        (Decode.at [ "view", "innerHeight" ] Decode.float)
+        (Decode.at [ "changedTouches", "0", "pageY" ] Decode.float)
+
+
 viewPhoto : Int -> ( File, String ) -> Html Msg
 viewPhoto index ( file, base64 ) =
     div
@@ -153,7 +202,9 @@ viewPhoto index ( file, base64 ) =
         [ img
             [ Html.Attributes.class "img-thumbnail"
             , Html.Attributes.src base64
-            , Html.Events.onClick (DeleteFile index)
+            , Html.Events.preventDefaultOn "touchstart"
+                (Decode.map (\start -> ( ShowPhoto index start, True )) decodePageBottom)
+            , Html.Events.preventDefaultOn "touchend" (Decode.succeed ( HidePhoto, True ))
             ]
             []
         ]
@@ -194,6 +245,11 @@ view model =
     in
     div
         [ Html.Attributes.class "create-report"
+        , if model.preview == NoPreview then
+            Html.Attributes.classList []
+
+          else
+            Html.Events.on "touchmove" (Decode.map DragPreview decodePageBottom)
         ]
         [ div
             [ Html.Attributes.class "bg-light"
@@ -281,5 +337,36 @@ view model =
                 [ i [ Html.Attributes.class "fa fa-paper-plane mr-2" ] []
                 , text "Эвакуировать"
                 ]
+            , case model.preview of
+                NoPreview ->
+                    text ""
+
+                Preview index end ->
+                    case List.head (List.drop index model.photos) of
+                        Nothing ->
+                            text ""
+
+                        Just ( _, uri ) ->
+                            div
+                                [ Html.Attributes.class "create-report__preview-container"
+                                ]
+                                [ div
+                                    [ Html.Attributes.class "create-report__preview"
+                                    , Html.Attributes.style "background-image" ("url(" ++ uri ++ ")")
+                                    ]
+                                    []
+                                , if busy then
+                                    text ""
+
+                                  else
+                                    span
+                                        [ Html.Attributes.classList
+                                            [ ( "create-report__photo-remover", True )
+                                            , ( "create-report__photo-remover_active", end < 100 )
+                                            ]
+                                        ]
+                                        [ i [ Html.Attributes.class "fa fa-trash-alt" ] []
+                                        ]
+                                ]
             ]
         ]
