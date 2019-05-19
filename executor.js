@@ -14,7 +14,6 @@ ymaps.ready(function () {
     var app = compiled.Elm.Executor.init();
 
     socket.on('change_status', function(report) {
-        console.log(report);
         app.ports.api__on_change_report.send(report);
     });
 
@@ -70,16 +69,20 @@ ymaps.ready(function () {
     app.ports.ya_map__set_addresses.subscribe(function (addresses) {
         if (yaMap == null) {
             afterMapInited = function () {
-                yaMap.geoObjects.removeAll();
                 drawAddresses(addresses);
             }
         } else {
-            yaMap.geoObjects.removeAll();
             drawAddresses(addresses);
         }
     });
 
     function drawAddresses(addresses) {
+        yaMap.geoObjects.each(function(child) {
+            if (child instanceof ymaps.Collection) {
+                yaMap.geoObjects.remove(child);
+            }
+        });
+
         var collection = new ymaps.Collection();
         yaMap.geoObjects.add(collection);
 

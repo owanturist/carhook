@@ -25,19 +25,39 @@ insertToDict entity dict =
     Dict.insert (ID.toString entity.id) entity dict
 
 
+insertReport : Api.Report -> Dict String Api.Report -> Dict String Api.Report
+insertReport report dict =
+    let
+        isToAdd =
+            case report.status of
+                Status.Declined _ _ ->
+                    False
+
+                Status.Done _ ->
+                    False
+
+                _ ->
+                    True
+    in
+    if isToAdd then
+        insertToDict report dict
+
+    else
+        Dict.remove (ID.toString report.id) dict
+
+
 
 -- H O M E
 
 
 type alias Home =
-    { reports : RemoteData Http.Error (List (ID { report : () }))
-    , reportsDict : Dict String Api.Report
+    { reports : RemoteData Http.Error (Dict String Api.Report)
     }
 
 
 initHome : ( Home, Cmd HomeMsg )
 initHome =
-    ( Home Loading Dict.empty
+    ( Home Loading
     , Cmd.batch
         [ Cmd.map GetListOfReportsDone Api.getListOfReports
         , YaMap.init "ya-map" True
@@ -45,30 +65,10 @@ initHome =
     )
 
 
-updateReportsInHome : Api.Report -> Home -> ( Home, Cmd HomeMsg )
-updateReportsInHome report home =
-    case home.reports of
-        Success reports ->
-            let
-                nextHome =
-                    { home
-                        | reports = Success (report.id :: reports)
-                        , reportsDict = insertToDict report home.reportsDict
-                    }
-            in
-            ( nextHome
-            , Dict.values nextHome.reportsDict
-                |> List.map (\r -> ( r.id, r.address ))
-                |> YaMap.setAddresses
-            )
-
-        _ ->
-            ( home, Cmd.none )
-
-
 type HomeMsg
     = GetListOfReportsDone (Result Http.Error (List Api.Report))
     | OpenReport (ID { report : () })
+    | OnReportChanged (Result Decode.Error Api.Report)
 
 
 updateHome : HomeMsg -> Glob -> Home -> ( Home, Cmd HomeMsg )
@@ -81,32 +81,13 @@ updateHome msg glob model =
 
         GetListOfReportsDone (Ok reports) ->
             let
-                reportsList =
-                    List.filter
-                        (\report ->
-                            case report.status of
-                                Status.Ready ->
-                                    True
-
-                                Status.InProgress _ ->
-                                    True
-
-                                Status.Accepted _ ->
-                                    True
-
-                                _ ->
-                                    False
-                        )
-                        reports
-
                 reportsDict =
-                    List.foldr insertToDict Dict.empty reports
+                    List.foldr insertReport Dict.empty reports
             in
-            ( { model
-                | reports = Success (List.map .id reportsList)
-                , reportsDict = reportsDict
-              }
-            , List.map (\report -> ( report.id, report.address )) reportsList
+            ( { model | reports = Success reportsDict }
+            , reportsDict
+                |> Dict.toList
+                |> List.map (Tuple.mapBoth ID.fromString .address)
                 |> YaMap.setAddresses
             )
 
@@ -115,10 +96,34 @@ updateHome msg glob model =
             , Browser.Navigation.pushUrl glob.key (routeToString (ToReport reportId))
             )
 
+        OnReportChanged (Err err) ->
+            ( { model | reports = Failure (Http.BadBody (Decode.errorToString err)) }
+            , Cmd.none
+            )
+
+        OnReportChanged (Ok report) ->
+            case model.reports of
+                Success reports ->
+                    let
+                        nextReports =
+                            insertReport report reports
+                    in
+                    ( { model | reports = Success nextReports }
+                    , Dict.values nextReports
+                        |> List.map (\r -> ( r.id, r.address ))
+                        |> YaMap.setAddresses
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 homeSubscriptions : Home -> Sub HomeMsg
-homeSubscriptions model =
-    Sub.map OpenReport YaMap.onReport
+homeSubscriptions _ =
+    Sub.batch
+        [ Sub.map OpenReport YaMap.onReport
+        , Sub.map OnReportChanged Api.onChangeReport
+        ]
 
 
 viewHome : Home -> Html HomeMsg
@@ -181,7 +186,7 @@ initPage glob route =
             Tuple.mapBoth HomePage (Cmd.map HomeMsg) initHome
 
         ToReport reportId ->
-            Tuple.mapBoth (ReportPage reportId) (Cmd.map ViewReportMsg) (ViewReport.init reportId)
+            Tuple.mapBoth (ReportPage reportId) (Cmd.map ReportMsg) (ViewReport.init reportId)
 
         ToNotFound ->
             ( VoidPage
@@ -209,9 +214,8 @@ init flags initialUrl key =
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
-    | OnReportChanged (Result Decode.Error Api.Report)
     | HomeMsg HomeMsg
-    | ViewReportMsg ViewReport.Msg
+    | ReportMsg ViewReport.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -226,7 +230,7 @@ update msg (Model glob page) =
                         YaMap.destroy
 
                     ReportPage _ _ ->
-                        Cmd.map ViewReportMsg ViewReport.destroy
+                        Cmd.map ReportMsg ViewReport.destroy
 
                     _ ->
                         Cmd.none
@@ -247,28 +251,19 @@ update msg (Model glob page) =
                 (Cmd.map HomeMsg)
                 (updateHome msgOfHome glob homePage)
 
-        ( OnReportChanged (Ok report), HomePage homePage ) ->
-            Tuple.mapBoth
-                (Model glob << HomePage)
-                (Cmd.map HomeMsg)
-                (updateReportsInHome report homePage)
-
-        ( OnReportChanged _, _ ) ->
-            ( Model glob page, Cmd.none )
-
         ( HomeMsg _, _ ) ->
             ( Model glob page, Cmd.none )
 
-        ( ViewReportMsg msgOfViewReport, ReportPage viewReportId viewReportPage ) ->
+        ( ReportMsg msgOfViewReport, ReportPage viewReportId viewReportPage ) ->
             let
                 ( nextViewReportPage, cmdOfViewReport ) =
                     ViewReport.update msgOfViewReport viewReportId viewReportPage
             in
             ( Model glob (ReportPage viewReportId nextViewReportPage)
-            , Cmd.map ViewReportMsg cmdOfViewReport
+            , Cmd.map ReportMsg cmdOfViewReport
             )
 
-        ( ViewReportMsg _, _ ) ->
+        ( ReportMsg _, _ ) ->
             ( Model glob page, Cmd.none )
 
 
@@ -278,15 +273,15 @@ update msg (Model glob page) =
 
 subscriptions : Model -> Sub Msg
 subscriptions (Model _ page) =
-    Sub.batch
-        [ Sub.map OnReportChanged Api.onChangeReport
-        , case page of
-            HomePage homePage ->
-                Sub.map HomeMsg (homeSubscriptions homePage)
+    case page of
+        HomePage homePage ->
+            Sub.map HomeMsg (homeSubscriptions homePage)
 
-            _ ->
-                Sub.none
-        ]
+        ReportPage _ reportPage ->
+            Sub.map ReportMsg (ViewReport.subscriptions reportPage)
+
+        _ ->
+            Sub.none
 
 
 
@@ -327,7 +322,7 @@ view (Model _ page) =
                     Html.map HomeMsg (viewHome homePage)
 
                 ReportPage _ reportPage ->
-                    Html.map ViewReportMsg (ViewReport.view False reportPage)
+                    Html.map ReportMsg (ViewReport.view False reportPage)
             ]
         ]
 

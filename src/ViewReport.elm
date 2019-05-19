@@ -1,4 +1,4 @@
-module ViewReport exposing (Model, Msg, destroy, init, update, view)
+module ViewReport exposing (Model, Msg, destroy, init, update, view, subscriptions)
 
 import Api
 import Error
@@ -6,6 +6,7 @@ import Html exposing (Html, button, div, form, i, img, label, q, span, text)
 import Html.Attributes
 import Http
 import ID exposing (ID)
+import Json.Decode as Decode
 import RemoteData exposing (RemoteData(..))
 import StatusPanel
 import YaMap
@@ -43,6 +44,7 @@ destroy =
 type Msg
     = GetReportDone (Result Http.Error Api.Report)
     | StatusPanelMsg StatusPanel.Msg
+    | OnReportChanged (Result Decode.Error Api.Report)
 
 
 update : Msg -> ID { report : () } -> Model -> ( Model, Cmd Msg )
@@ -74,6 +76,21 @@ update msg reportId model =
                             updateStatusPanel { mod | report = Success updatedReport } cmd subStage
             in
             updateStatusPanel model Cmd.none (StatusPanel.update msgOfStatusPanel reportId model.statusPanel)
+
+        OnReportChanged (Err err) ->
+            ( { model | report = Failure (Http.BadBody (Decode.errorToString err)) }
+            , Cmd.none
+            )
+
+        OnReportChanged (Ok report) ->
+            ( { model | report = Success report }
+            , Cmd.none
+            )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.map OnReportChanged Api.onChangeReport
 
 
 
