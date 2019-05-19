@@ -3,7 +3,7 @@ require('./src/styles.pcss');
 var compiled = require('./src/Main.elm');
 var io = require('socket.io-client');
 
-var socket = io('//carhook.ru:80');
+var socket = io('//carhook.ru');
 socket.emit('join_room', 'customer');
 
 function noop() { }
